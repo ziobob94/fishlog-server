@@ -1,0 +1,32 @@
+{
+
+    "api": {
+        "port": 3001,
+        "host": "localhost"
+    },
+    "mongodb": {
+        "url": "mongodb://localhost:27017/fishlog"
+    },
+    "client": {
+        "url": "http://localhost:5173"
+    },
+    "app": {
+        "name": "Fishing Log Server",
+        "dirs":{
+            "uploads": "./uploads"
+        },
+        "auth": {
+            "jwt": {},
+            "google": {
+                "callbackUrl": "http://localhost:3001/api/auth/google/callback",
+                "clientId": "your-google-client-id",
+                "clientSecret": "your-google-client-secret"
+            },
+            "facebook": {
+                "callbackUrl": "http://localhost:3001/api/auth/facebook/callback",
+                "clientId": "your-facebook-client-id",
+                "clientSecret": "your-facebook-client-secret"
+            }  
+        } 
+    }
+}

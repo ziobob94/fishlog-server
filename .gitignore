@@ -1,0 +1,9 @@
+node_modules/
+.env
+uploads/*
+!uploads/.gitkeep
+config/local.json
+config/local*.json
+config/dev*.json
+config/stag*.json
+config/prod*.json
