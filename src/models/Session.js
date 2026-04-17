@@ -16,6 +16,7 @@ const SeaSchema = new mongoose.Schema({
   waveHeight: { type: String },
   wavePeriod: { type: String },
   current:    { type: String },
+  waterLevel: { type: String, enum: ['piena', 'normale', 'magra', ''] },
   waterColor: { type: String },
   waterTemp:  { type: Number },
   tide: {
@@ -91,6 +92,7 @@ const SessionSchema = new mongoose.Schema({
   startTime: { type: String },
   endTime:   { type: String },
   technique: { type: String, enum: ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro', ''] },
+  waterType: { type: String, enum: ['mare', 'fiume', 'lago', 'altro', ''], default: '' },
   rating:    { type: Number, min: 0, max: 5, default: 0 },
 
   location: { type: LocationSchema, required: true },
