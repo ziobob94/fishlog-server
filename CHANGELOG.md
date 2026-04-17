@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.0.0...server-v1.1.0) (2026-04-17)
+
+
+### Features
+
+* locations ([04cb5a1](https://github.com/ziobob94/fishlog-server/commit/04cb5a16b2563b9073362bab952eb2ea2d7f9cb5))
+
 # 1.0.0 (2026-04-16)
 
 
