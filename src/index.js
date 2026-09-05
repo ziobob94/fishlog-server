@@ -18,6 +18,8 @@ import mediaRoutes   from './routes/media.js'
 import authRoutes    from './routes/auth.js'
 import groupRoutes     from './routes/groups.js'
 import adminRoutes     from './routes/admin.js'
+import speciesRoutes    from './routes/species.js'
+import postRoutes       from './routes/posts.js'
 import fp from 'fastify-plugin'
 
 
@@ -71,6 +73,8 @@ await app.register(sessionRoutes, { prefix: '/api/sessions' })
 await app.register(mediaRoutes,   { prefix: '/api/media' })
 await app.register(groupRoutes,   { prefix: '/api/groups' })
 await app.register(adminRoutes,   { prefix: '/api/admin' })
+await app.register(speciesRoutes, { prefix: '/api/species' })
+await app.register(postRoutes,    { prefix: '/api/posts' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
