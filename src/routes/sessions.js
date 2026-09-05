@@ -1,9 +1,43 @@
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import path from 'path'
 import Session from '../models/Session.js'
 import { visibilityFilter, canEdit, canModerate } from '../utils/sessionAccess.js'
+
+// Catalogo di esche note (naturali/artificiali/miste), usato come base di
+// suggerimenti finché non c'è storico personale, e per proporre il "tipo"
+// quando l'utente sceglie un'esca standard.
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const BAIT_CATALOG = JSON.parse(readFileSync(path.join(__dirname, '../data/baits.json'), 'utf-8'))
 
 export default async function sessionRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
+
+  // GET /api/sessions/bait-suggestions — esche già usate (storico) + catalogo,
+  // per popolare la select-che-è-anche-input (<datalist>) del form.
+  app.get('/bait-suggestions', auth, async (req) => {
+    const filter = await visibilityFilter(req.user)
+    const agg = await Session.aggregate([
+      { $match: filter },
+      { $unwind: '$catches' },
+      { $project: { bait: { $trim: { input: '$catches.baitUsed' } } } },
+      { $match: { bait: { $nin: [null, ''] } } },
+      // group case-insensitive: "Arenicola" e "arenicola" sono la stessa esca
+      { $group: { _id: { $toLower: '$bait' }, count: { $sum: 1 }, sample: { $first: '$bait' } } },
+      { $sort: { count: -1 } },
+      { $limit: 20 }
+    ])
+
+    const fromHistory = agg.map(a => a.sample)
+    const seen = new Set(fromHistory.map(b => b.toLowerCase()))
+    const catalogNames = BAIT_CATALOG.map(b => b.name).filter(b => !seen.has(b.toLowerCase()))
+    return { data: [...fromHistory, ...catalogNames] }
+  })
+
+  // GET /api/sessions/bait-catalog — nome + tipo, per auto-compilare "Tipo esca"
+  // quando l'utente sceglie (o scrive) un'esca standard del catalogo.
+  app.get('/bait-catalog', auth, async () => ({ data: BAIT_CATALOG }))
 
   // GET /api/sessions
   app.get('/', auth, async (req) => {
@@ -41,6 +75,12 @@ export default async function sessionRoutes(app) {
     return { data, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } }
   })
 
+  // GET /api/sessions/ongoing — la pescata in corso dell'utente (al più una), se c'è
+  app.get('/ongoing', auth, async (req) => {
+    const session = await Session.findOne({ userId: req.user.sub, status: 'ongoing' }).lean()
+    return { data: session || null }
+  })
+
   // GET /api/sessions/stats
   app.get('/stats', auth, async (req) => {
     const filter = await visibilityFilter(req.user)
@@ -62,9 +102,11 @@ export default async function sessionRoutes(app) {
     return session
   })
 
-  // POST /api/sessions
+  // POST /api/sessions — al più una sessione "ongoing" per utente: aprendone
+  // una nuova, l'eventuale precedente ancora in corso viene chiusa.
   app.post('/', auth, async (req, reply) => {
-    const session = new Session({ ...req.body, userId: req.user.sub })
+    await Session.updateMany({ userId: req.user.sub, status: 'ongoing' }, { status: 'closed' })
+    const session = new Session({ ...req.body, userId: req.user.sub, status: 'ongoing' })
     await session.save()
     return reply.status(201).send(session)
   })

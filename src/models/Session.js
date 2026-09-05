@@ -35,47 +35,6 @@ const WeatherSchema = new mongoose.Schema({
   notes:         { type: String }
 }, { _id: false })
 
-const BaitSchema = new mongoose.Schema({
-  name:         { type: String, required: true },
-  type:         { type: String, enum: ['naturale', 'artificiale', 'misto', ''] },
-  presentation: { type: String },
-  notes:        { type: String }
-}, { _id: false })
-
-const RigSchema = new mongoose.Schema({
-  name:         { type: String, required: true },
-  type:         { type: String },
-  hookSize:     { type: String },
-  hookType:     { type: String },
-  lineMainLb:   { type: Number },
-  leaderLb:     { type: Number },
-  sinkerWeight: { type: Number },
-  sinkerType:   { type: String },
-  swivel:       { type: String },
-  notes:        { type: String }
-}, { _id: false })
-
-const CastSchema = new mongoose.Schema({
-  distance:  { type: Number },
-  direction: { type: String },
-  rig:       { type: String },
-  bait:      { type: String },
-  result:    { type: String, enum: ['cattura', 'abboccata', 'niente', ''] },
-  notes:     { type: String }
-}, { _id: false })
-
-const CatchSchema = new mongoose.Schema({
-  species:  { type: String, required: true },
-  weightKg: { type: Number },
-  lengthCm: { type: Number },
-  released: { type: Boolean, default: false },
-  baitUsed: { type: String },
-  rigUsed:  { type: String },
-  distance: { type: Number },
-  time:     { type: String },
-  notes:    { type: String }
-}, { _id: false })
-
 const MediaSchema = new mongoose.Schema({
   filename:     { type: String, required: true },
   originalName: { type: String },
@@ -84,6 +43,37 @@ const MediaSchema = new mongoose.Schema({
   type:         { type: String, enum: ['photo', 'video'] },
   caption:      { type: String },
   uploadedAt:   { type: Date, default: Date.now }
+})
+
+// Esca, montatura e lancio non sono più sezioni separate: sono caratteristiche
+// della singola cattura, quindi i loro campi vivono direttamente qui.
+const CatchSchema = new mongoose.Schema({
+  species:  { type: String, required: true },
+  weightKg: { type: Number },
+  lengthCm: { type: Number },
+  released: { type: Boolean, default: false },
+  distance: { type: Number },
+  direction: { type: String },
+  time:     { type: String },
+  notes:    { type: String },
+
+  // Esca
+  baitUsed:         { type: String },
+  baitType:         { type: String, enum: ['naturale', 'artificiale', 'misto', ''] },
+  baitPresentation: { type: String },
+
+  // Montatura
+  rigUsed:      { type: String },
+  rigType:      { type: String },
+  hookSize:     { type: String },
+  hookType:     { type: String },
+  lineMainLb:   { type: Number },
+  leaderLb:     { type: Number },
+  sinkerWeight: { type: Number },
+  sinkerType:   { type: String },
+  swivel:       { type: String },
+
+  media: [MediaSchema]
 })
 
 const SessionSchema = new mongoose.Schema({
@@ -95,13 +85,14 @@ const SessionSchema = new mongoose.Schema({
   waterType: { type: String, enum: ['mare', 'fiume', 'lago', 'altro', ''], default: '' },
   rating:    { type: Number, min: 0, max: 5, default: 0 },
 
+  // Un utente ha al più una sessione "ongoing" alla volta: se ne apre una
+  // nuova, quella precedente viene chiusa automaticamente (v. POST /sessions).
+  status: { type: String, enum: ['ongoing', 'closed'], default: 'ongoing' },
+
   location: { type: LocationSchema, required: true },
   sea:      { type: SeaSchema, default: {} },
   weather:  { type: WeatherSchema, default: {} },
 
-  baits:   [BaitSchema],
-  rigs:    [RigSchema],
-  casts:   [CastSchema],
   catches: [CatchSchema],
   media:   [MediaSchema],
 
