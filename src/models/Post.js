@@ -5,6 +5,13 @@ const ResponseSchema = new mongoose.Schema({
   message: { type: String, required: true, trim: true }
 }, { timestamps: true })
 
+// Commento generico, valido su qualunque post (a differenza di "responses",
+// che restano solo l'adesione/RSVP sugli eventi).
+const CommentSchema = new mongoose.Schema({
+  user:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  message: { type: String, required: true, trim: true }
+}, { timestamps: true })
+
 const EventSchema = new mongoose.Schema({
   location: { name: String, lat: Number, lng: Number },
   date:     Date,
@@ -21,7 +28,9 @@ const PostSchema = new mongoose.Schema({
   // default: undefined evita che Mongoose crei comunque il subdocumento
   // (con i suoi default interni, es. status:'open') per i post non-evento.
   event:        { type: EventSchema, default: undefined },
-  responses: [ResponseSchema]
+  responses: [ResponseSchema],
+  comments:  [CommentSchema],
+  likes:     [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true })
 
 PostSchema.index({ visibility: 1, createdAt: -1 })

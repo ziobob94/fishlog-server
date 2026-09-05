@@ -61,6 +61,7 @@ export default async function postRoutes(app) {
         .skip(skip).limit(parseInt(limit))
         .populate('author', 'displayName avatar')
         .populate('allowedGroups', 'name')
+        .populate('comments.user', 'displayName avatar')
         .lean(),
       Post.countDocuments(filter)
     ])
@@ -103,6 +104,7 @@ export default async function postRoutes(app) {
       .populate('author', 'displayName avatar')
       .populate('allowedGroups', 'name')
       .populate('responses.user', 'displayName avatar')
+      .populate('comments.user', 'displayName avatar')
       .lean()
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
     return post
@@ -147,6 +149,54 @@ export default async function postRoutes(app) {
     await post.save()
     await post.populate('responses.user', 'displayName avatar')
     return reply.status(201).send(post.responses[post.responses.length - 1])
+  })
+
+  // POST /api/posts/:id/comments — commenta un post (qualunque tipo)
+  app.post('/:id/comments', auth, async (req, reply) => {
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter })
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+
+    const { message } = req.body
+    if (!message?.trim()) return reply.status(400).send({ error: 'Messaggio obbligatorio' })
+
+    post.comments.push({ user: req.user.sub, message: message.trim() })
+    await post.save()
+    await post.populate('comments.user', 'displayName avatar')
+    return reply.status(201).send(post.comments[post.comments.length - 1])
+  })
+
+  // DELETE /api/posts/:id/comments/:commentId — solo autore del commento, dell'post o admin
+  app.delete('/:id/comments/:commentId', auth, async (req, reply) => {
+    const post = await Post.findById(req.params.id)
+    if (!post) return reply.status(404).send({ error: 'Post non trovato' })
+
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return reply.status(404).send({ error: 'Commento non trovato' })
+
+    const isCommentAuthor = comment.user.toString() === req.user.sub
+    if (!isCommentAuthor && !canEdit(req.user, post)) return reply.status(403).send({ error: 'Permesso negato' })
+
+    comment.deleteOne()
+    await post.save()
+    return { deleted: true }
+  })
+
+  // POST /api/posts/:id/like — mette/toglie "mi piace" (toggle)
+  app.post('/:id/like', auth, async (req, reply) => {
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter })
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+
+    const userId = req.user.sub
+    const alreadyLiked = post.likes.some(id => id.toString() === userId)
+    if (alreadyLiked) {
+      post.likes = post.likes.filter(id => id.toString() !== userId)
+    } else {
+      post.likes.push(userId)
+    }
+    await post.save()
+    return { liked: !alreadyLiked, count: post.likes.length }
   })
 
   // PATCH /api/posts/:id/status — apre/chiude un evento (solo author)
