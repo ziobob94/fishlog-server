@@ -14,5 +14,19 @@
             "appSecret": "your-facebook-app-secret",
             "callbackUrl": "http://localhost:3001/api/auth/facebook/callback"
         }
+    },
+    "mail": {
+        "smtp": {
+            "host": "smtp.example.com",
+            "port": 587,
+            "secure": false,
+            "user": "your-smtp-user",
+            "pass": "your-smtp-password"
+        },
+        "from": "Fishlog <no-reply@fishlog.local>"
+    },
+    "features": {
+        "_comment": "Metti passwordAuth a false in produzione finché l'SMTP non è configurato: disabilita registrazione, cambio password e cambio email (restano attivi login e OAuth)",
+        "passwordAuth": true
     }
 }

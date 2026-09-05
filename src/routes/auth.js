@@ -1,5 +1,13 @@
+import fs from 'fs/promises'
+import path from 'path'
+import crypto from 'crypto'
+import { nanoid } from 'nanoid'
 import AppConfig from '../config.js'
 import User from '../models/User.js'
+import Session from '../models/Session.js'
+import Post from '../models/Post.js'
+import Group from '../models/Group.js'
+import { sendMail, securityAlertEmail, passwordResetEmail, emailChangeConfirmEmail } from '../utils/mailer.js'
 
 const cfg = new AppConfig()
 
@@ -12,6 +20,24 @@ const FACEBOOK_APP_SECRET  = cfg.get('oauth.facebook.appSecret')
 const FACEBOOK_CALLBACK_URL = cfg.get('oauth.facebook.callbackUrl')
 
 const CLIENT_URL = cfg.get('client.url')
+
+const AVATAR_MIME = {
+  'image/jpeg': '.jpg',
+  'image/png':  '.png',
+  'image/webp': '.webp'
+}
+
+function uploadsDir() {
+  return path.resolve(cfg.get('app.dirs.uploads'))
+}
+
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+function passwordAuthEnabled() {
+  return cfg.get('features.passwordAuth', true)
+}
 
 export default async function authRoutes(app) {
 
@@ -27,8 +53,19 @@ export default async function authRoutes(app) {
     return reply.redirect(`${CLIENT_URL}/auth/callback?token=${token}`)
   }
 
+  function requirePasswordAuth(reply) {
+    if (passwordAuthEnabled()) return true
+    reply.status(503).send({ error: 'Funzionalità temporaneamente non disponibile' })
+    return false
+  }
+
+  // ── feature flags pubblici ───────────────────────────────────────────────
+  app.get('/features', async () => ({ passwordAuthEnabled: passwordAuthEnabled() }))
+
   // ── register ───────────────────────────────────────────────────────────
   app.post('/register', async (req, reply) => {
+    if (!requirePasswordAuth(reply)) return
+
     const { email, password, displayName } = req.body
     if (!email || !password)
       return reply.status(400).send({ error: 'Email e password obbligatorie' })
@@ -63,6 +100,191 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub).lean()
     if (!user) throw { statusCode: 404, message: 'Utente non trovato' }
     return publicUser(user)
+  })
+
+  // ── aggiorna profilo (nome, privacy di default) ──────────────────────────
+  app.patch('/me', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const { displayName, defaultVisibility } = req.body
+    if (displayName !== undefined) user.displayName = displayName
+    if (defaultVisibility !== undefined) {
+      if (!['public', 'users', 'group', 'private'].includes(defaultVisibility))
+        return reply.status(400).send({ error: 'Visibilità non valida' })
+      user.defaultVisibility = defaultVisibility
+    }
+    await user.save()
+    return publicUser(user)
+  })
+
+  // ── avatar ────────────────────────────────────────────────────────────
+  app.post('/me/avatar', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const part = await req.file()
+    if (!part) return reply.status(400).send({ error: 'Nessun file ricevuto' })
+
+    const ext = AVATAR_MIME[part.mimetype]
+    if (!ext) return reply.status(400).send({ error: 'Formato non supportato (JPG, PNG, WEBP)' })
+
+    await fs.mkdir(uploadsDir(), { recursive: true })
+    const filename = `avatar_${nanoid()}_${Date.now()}${ext}`
+    const buffer = await part.toBuffer()
+    await fs.writeFile(path.join(uploadsDir(), filename), buffer)
+
+    user.avatar = `${req.protocol}://${req.headers.host}/uploads/${filename}`
+    await user.save()
+    return publicUser(user)
+  })
+
+  // ── cambio password ───────────────────────────────────────────────────
+  app.patch('/me/password', { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!requirePasswordAuth(reply)) return
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+    if (!user.passwordHash)
+      return reply.status(400).send({ error: 'Account collegato solo a provider social, nessuna password da cambiare' })
+
+    const { currentPassword, newPassword } = req.body
+    if (!currentPassword || !newPassword)
+      return reply.status(400).send({ error: 'Password attuale e nuova obbligatorie' })
+    if (newPassword.length < 6)
+      return reply.status(400).send({ error: 'Nuova password minimo 6 caratteri' })
+    if (!(await user.checkPassword(currentPassword)))
+      return reply.status(401).send({ error: 'Password attuale errata' })
+
+    await user.setPassword(newPassword)
+    await user.save()
+
+    await sendMail({ to: user.email, ...securityAlertEmail('La password del tuo account Fishlog è stata cambiata.') })
+
+    return { updated: true }
+  })
+
+  // ── password dimenticata ────────────────────────────────────────────────
+  app.post('/forgot-password', async (req, reply) => {
+    if (!requirePasswordAuth(reply)) return
+    const { email } = req.body
+    if (!email) return reply.status(400).send({ error: 'Email obbligatoria' })
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
+    if (user && user.passwordHash) {
+      const token = crypto.randomBytes(32).toString('hex')
+      user.passwordResetTokenHash = hashToken(token)
+      user.passwordResetExpires   = new Date(Date.now() + 60 * 60 * 1000) // 1h
+      await user.save()
+
+      const link = `${CLIENT_URL}/reset-password?token=${token}`
+      await sendMail({ to: user.email, ...passwordResetEmail(link) })
+    }
+
+    // Risposta identica in ogni caso: non riveliamo se l'email esiste
+    return { sent: true }
+  })
+
+  app.post('/reset-password', async (req, reply) => {
+    if (!requirePasswordAuth(reply)) return
+    const { token, newPassword } = req.body
+    if (!token || !newPassword) return reply.status(400).send({ error: 'Token e nuova password obbligatori' })
+    if (newPassword.length < 6) return reply.status(400).send({ error: 'Nuova password minimo 6 caratteri' })
+
+    const user = await User.findOne({
+      passwordResetTokenHash: hashToken(token),
+      passwordResetExpires: { $gt: new Date() }
+    })
+    if (!user) return reply.status(400).send({ error: 'Link non valido o scaduto' })
+
+    await user.setPassword(newPassword)
+    user.passwordResetTokenHash = undefined
+    user.passwordResetExpires   = undefined
+    await user.save()
+
+    await sendMail({ to: user.email, ...securityAlertEmail('La password del tuo account Fishlog è stata reimpostata.') })
+
+    return { reset: true }
+  })
+
+  // ── cambio email (richiede conferma via link) ──────────────────────────
+  app.patch('/me/email', { preHandler: [app.authenticate] }, async (req, reply) => {
+    if (!requirePasswordAuth(reply)) return
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const { newEmail, currentPassword } = req.body
+    if (!newEmail) return reply.status(400).send({ error: 'Nuova email obbligatoria' })
+    if (user.passwordHash) {
+      if (!currentPassword) return reply.status(400).send({ error: 'Password attuale obbligatoria' })
+      if (!(await user.checkPassword(currentPassword)))
+        return reply.status(401).send({ error: 'Password attuale errata' })
+    }
+
+    const normalized = newEmail.toLowerCase().trim()
+    const existing = await User.findOne({ email: normalized })
+    if (existing && existing._id.toString() !== user._id.toString())
+      return reply.status(409).send({ error: 'Email già in uso' })
+
+    const token = crypto.randomBytes(32).toString('hex')
+    user.pendingEmail         = normalized
+    user.emailChangeTokenHash = hashToken(token)
+    user.emailChangeExpires   = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24h
+    await user.save()
+
+    const link = `${req.protocol}://${req.headers.host}/api/auth/confirm-email?token=${token}`
+    await sendMail({ to: normalized, ...emailChangeConfirmEmail(link) })
+
+    return { pending: true, pendingEmail: normalized }
+  })
+
+  // ── conferma cambio email (link cliccato dall'utente) ──────────────────
+  app.get('/confirm-email', async (req, reply) => {
+    const { token } = req.query
+    if (!token) return reply.redirect(`${CLIENT_URL}/confirm-email?status=error`)
+
+    const user = await User.findOne({
+      emailChangeTokenHash: hashToken(token),
+      emailChangeExpires: { $gt: new Date() }
+    })
+    if (!user) return reply.redirect(`${CLIENT_URL}/confirm-email?status=error`)
+
+    const oldEmail = user.email
+    user.email = user.pendingEmail
+    user.pendingEmail         = undefined
+    user.emailChangeTokenHash = undefined
+    user.emailChangeExpires   = undefined
+    await user.save()
+
+    if (oldEmail) {
+      await sendMail({ to: oldEmail, ...securityAlertEmail(`L'email del tuo account Fishlog è stata cambiata in ${user.email}.`) })
+    }
+
+    return reply.redirect(`${CLIENT_URL}/confirm-email?status=ok`)
+  })
+
+  // ── eliminazione account ──────────────────────────────────────────────
+  app.delete('/me', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    if (user.passwordHash) {
+      const { password } = req.body
+      if (!password || !(await user.checkPassword(password)))
+        return reply.status(401).send({ error: 'Password errata' })
+    }
+
+    const ownedGroups = await Group.find({ owner: user._id })
+    const blockingGroup = ownedGroups.find(g => g.members.some(m => m.toString() !== user._id.toString()))
+    if (blockingGroup)
+      return reply.status(400).send({ error: `Trasferisci la proprietà del gruppo "${blockingGroup.name}" prima di eliminare l'account` })
+
+    await Group.deleteMany({ _id: { $in: ownedGroups.map(g => g._id) } })
+    await Group.updateMany({ members: user._id }, { $pull: { members: user._id } })
+    await Session.deleteMany({ userId: user._id })
+    await Post.deleteMany({ author: user._id })
+    await User.findByIdAndDelete(user._id)
+
+    return { deleted: true }
   })
 
   // ── Google OAuth ───────────────────────────────────────────────────────
@@ -172,10 +394,15 @@ export default async function authRoutes(app) {
 
   function publicUser(user) {
     return {
-      _id:         user._id,
-      email:       user.email,
-      displayName: user.displayName,
-      avatar:      user.avatar
+      _id:               user._id,
+      email:             user.email,
+      displayName:       user.displayName,
+      avatar:            user.avatar,
+      role:              user.role,
+      defaultVisibility: user.defaultVisibility,
+      hasPassword:       !!user.passwordHash,
+      pendingEmail:      user.pendingEmail || null,
+      providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }
     }
   }
 }
