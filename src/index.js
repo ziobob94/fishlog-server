@@ -22,6 +22,7 @@ import speciesRoutes    from './routes/species.js'
 import postRoutes       from './routes/posts.js'
 import userRoutes       from './routes/users.js'
 import friendRoutes     from './routes/friends.js'
+import chatRoutes       from './routes/chat.js'
 import fp from 'fastify-plugin'
 
 
@@ -79,6 +80,7 @@ await app.register(speciesRoutes, { prefix: '/api/species' })
 await app.register(postRoutes,    { prefix: '/api/posts' })
 await app.register(userRoutes,    { prefix: '/api/users' })
 await app.register(friendRoutes,  { prefix: '/api/friends' })
+await app.register(chatRoutes,    { prefix: '/api/chat' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
