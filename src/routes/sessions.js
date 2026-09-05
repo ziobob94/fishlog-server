@@ -102,10 +102,14 @@ export default async function sessionRoutes(app) {
     return session
   })
 
-  // POST /api/sessions — al più una sessione "ongoing" per utente: aprendone
-  // una nuova, l'eventuale precedente ancora in corso viene chiusa.
+  // POST /api/sessions — al più una sessione "ongoing" per utente: se ce n'è
+  // già una in corso, il tentativo di aprirne un'altra viene rifiutato
+  // (mai una chiusura silenziosa che sostituisce dati non ancora salvati).
   app.post('/', auth, async (req, reply) => {
-    await Session.updateMany({ userId: req.user.sub, status: 'ongoing' }, { status: 'closed' })
+    const existingOngoing = await Session.findOne({ userId: req.user.sub, status: 'ongoing' }).lean()
+    if (existingOngoing) {
+      return reply.status(409).send({ error: 'Hai già un\'uscita in corso', ongoingId: existingOngoing._id })
+    }
     const session = new Session({ ...req.body, userId: req.user.sub, status: 'ongoing' })
     await session.save()
     return reply.status(201).send(session)
@@ -119,6 +123,14 @@ export default async function sessionRoutes(app) {
 
     // Impedisce di modificare campi riservati
     const { userId, hidden, ...body } = req.body
+
+    // Anche riaprendo una sessione via PATCH non deve poterne coesistere
+    // più di una "ongoing" per utente.
+    if (body.status === 'ongoing' && session.status !== 'ongoing') {
+      const otherOngoing = await Session.findOne({ userId: req.user.sub, status: 'ongoing', _id: { $ne: session._id } }).lean()
+      if (otherOngoing) return reply.status(409).send({ error: 'Hai già un\'uscita in corso', ongoingId: otherOngoing._id })
+    }
+
     Object.assign(session, body)
     await session.save()
     return session
