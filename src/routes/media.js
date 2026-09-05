@@ -2,6 +2,10 @@ import fs from 'fs/promises'
 import path from 'path'
 import { nanoid } from 'nanoid'
 import Session from '../models/Session.js'
+import AppConfig from '../config.js'
+import { canEdit } from '../utils/sessionAccess.js'
+
+const cfg = new AppConfig()
 
 const ALLOWED_MIME = {
   'image/jpeg':     'photo',
@@ -14,15 +18,29 @@ const ALLOWED_MIME = {
 }
 
 function uploadsDir() {
-  return path.resolve(process.env.UPLOADS_DIR || './uploads')
+  return path.resolve(cfg.get('app.dirs.uploads'))
+}
+
+// Risolve l'array di media su cui operare: quello della sessione, oppure
+// quello di una specifica cattura quando è passato un catchId.
+function resolveTarget(session, catchId, reply) {
+  if (!catchId) return session.media
+  const c = session.catches.id(catchId)
+  if (!c) { reply.status(404).send({ error: 'Cattura non trovata' }); return null }
+  return c.media
 }
 
 export default async function mediaRoutes(app) {
 
-  // POST /api/media/upload/:sessionId
-  app.post('/upload/:sessionId', async (req, reply) => {
+  const auth = { preHandler: [app.authenticate] }
+
+  async function handleUpload(req, reply, catchId) {
     const session = await Session.findById(req.params.sessionId)
     if (!session) return reply.status(404).send({ error: 'Session not found' })
+    if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
+
+    const target = resolveTarget(session, catchId, reply)
+    if (!target) return
 
     await fs.mkdir(uploadsDir(), { recursive: true })
 
@@ -49,24 +67,33 @@ export default async function mediaRoutes(app) {
         type: mediaType,
         caption: ''
       }
-      session.media.push(doc)
+      target.push(doc)
       uploaded.push(doc)
     }
 
     await session.save()
 
-    const baseUrl = `${req.protocol}://${req.hostname}:${process.env.PORT || 3001}`
-    return {
+    const baseUrl = `${req.protocol}://${req.headers.host}`
+    return reply.send({
       uploaded: uploaded.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` }))
-    }
-  })
+    })
+  }
 
-  // DELETE /api/media/:sessionId/:mediaId
-  app.delete('/:sessionId/:mediaId', async (req, reply) => {
+  // POST /api/media/upload/:sessionId — media della sessione
+  app.post('/upload/:sessionId', auth, (req, reply) => handleUpload(req, reply, null))
+
+  // POST /api/media/upload/:sessionId/catch/:catchId — foto/video di una cattura
+  app.post('/upload/:sessionId/catch/:catchId', auth, (req, reply) => handleUpload(req, reply, req.params.catchId))
+
+  async function handleDelete(req, reply, catchId) {
     const session = await Session.findById(req.params.sessionId)
     if (!session) return reply.status(404).send({ error: 'Session not found' })
+    if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
 
-    const item = session.media.id(req.params.mediaId)
+    const target = resolveTarget(session, catchId, reply)
+    if (!target) return
+
+    const item = target.id(req.params.mediaId)
     if (!item) return reply.status(404).send({ error: 'Media not found' })
 
     try { await fs.unlink(path.join(uploadsDir(), item.filename)) } catch {}
@@ -74,18 +101,33 @@ export default async function mediaRoutes(app) {
     item.deleteOne()
     await session.save()
     return { deleted: true }
-  })
+  }
 
-  // PATCH /api/media/:sessionId/:mediaId/caption
-  app.patch('/:sessionId/:mediaId/caption', async (req, reply) => {
+  // DELETE /api/media/:sessionId/:mediaId
+  app.delete('/:sessionId/:mediaId', auth, (req, reply) => handleDelete(req, reply, null))
+
+  // DELETE /api/media/:sessionId/catch/:catchId/:mediaId
+  app.delete('/:sessionId/catch/:catchId/:mediaId', auth, (req, reply) => handleDelete(req, reply, req.params.catchId))
+
+  async function handleCaption(req, reply, catchId) {
     const session = await Session.findById(req.params.sessionId)
     if (!session) return reply.status(404).send({ error: 'Session not found' })
+    if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
 
-    const item = session.media.id(req.params.mediaId)
+    const target = resolveTarget(session, catchId, reply)
+    if (!target) return
+
+    const item = target.id(req.params.mediaId)
     if (!item) return reply.status(404).send({ error: 'Media not found' })
 
     item.caption = req.body.caption || ''
     await session.save()
     return { updated: true }
-  })
+  }
+
+  // PATCH /api/media/:sessionId/:mediaId/caption
+  app.patch('/:sessionId/:mediaId/caption', auth, (req, reply) => handleCaption(req, reply, null))
+
+  // PATCH /api/media/:sessionId/catch/:catchId/:mediaId/caption
+  app.patch('/:sessionId/catch/:catchId/:mediaId/caption', auth, (req, reply) => handleCaption(req, reply, req.params.catchId))
 }

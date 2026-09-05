@@ -10,6 +10,7 @@ import staticFiles from '@fastify/static'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import mongoose from 'mongoose'
+import pretty from 'pino-pretty'
 import authorizePlugin from './plugins/authorize.js'
 
 import sessionRoutes from './routes/sessions.js'
@@ -17,14 +18,18 @@ import mediaRoutes   from './routes/media.js'
 import authRoutes    from './routes/auth.js'
 import groupRoutes     from './routes/groups.js'
 import adminRoutes     from './routes/admin.js'
+import speciesRoutes    from './routes/species.js'
+import postRoutes       from './routes/posts.js'
 import fp from 'fastify-plugin'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Stream sincrono (no worker thread): il transport pino-pretty basato su
+// worker crasha sotto `node --watch` (thread-stream orfano ai riavvii).
 const app = Fastify({
   logger: {
-    transport: { target: 'pino-pretty', options: { colorize: true } }
+    stream: pretty({ colorize: true })
   }
 })
 
@@ -68,6 +73,8 @@ await app.register(sessionRoutes, { prefix: '/api/sessions' })
 await app.register(mediaRoutes,   { prefix: '/api/media' })
 await app.register(groupRoutes,   { prefix: '/api/groups' })
 await app.register(adminRoutes,   { prefix: '/api/admin' })
+await app.register(speciesRoutes, { prefix: '/api/species' })
+await app.register(postRoutes,    { prefix: '/api/posts' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 

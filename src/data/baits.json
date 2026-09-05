@@ -1,0 +1,2337 @@
+[
+  {
+    "name": "Acciuga",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Acero dolce da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Aguglia",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Alborella",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Alga marina verde da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Alosa",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Americano",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Anatra artificiale",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Anellide marino",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Anguillina",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Arachide da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Arenicola",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Aringa",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Articulated streamer",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Asymmetric jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Attractor sponge",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Bacche di sambuco",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Bait rig sabiki",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Baitfish mummificato",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Ballyhoo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Bandum",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Beaver lure",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Bibi",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Bigattino",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Bigattino artificiale",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Biodegradable soft bait",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Bird lure",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Blade bait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Bleak",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Blob fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Bloodworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Blue Wing Olive",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Bluegill",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Boga",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Boiles",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Bonefish fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Bonito vivo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Booby fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Bream",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Bucktail jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Bug lure in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Bullet head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Butterworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Buzzbait",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Cachas",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Caddis larva",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Caddis pupa",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Calamaro",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Calamaro in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Calamaro metallico da traina",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Camola del miele",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Camola della farina",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Camola di cera",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Canapa da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Cannolicchio",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Cannolicchio sgusciato",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Capasanta",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Carassio",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Carne in scatola da pesca",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Caster",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Casting jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Casting spoon",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Casting spoon micro",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Cavalletta",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Cece da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Cedar Plug",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Cefalo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Chatterbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Chiocciola di terra",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Chironomo artificiale",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Chub",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Chugger",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Chugger head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Ciamberlan",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Cicada lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Ciciniello",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Cicirello",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Cigar minnow",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Ciliegia da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Clouser Deep Minnow",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Clouser Minnow",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Cobia Vivo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Cobite",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Colorado blade spinner",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Copper John",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Cordella",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Coreano",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Cozza",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Craw in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Crawler",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Crazy Charlie",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Creature bait",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Critical balanced boilie",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Cucchiaino da traina",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Cucchiaino ondulante",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Cucchiaino rotante",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Curly tail worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Cuscinetto rotante con piuma",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Dace",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Daisy Chain",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Dancer fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Darter lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Dee fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Deep diver crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Dendrobaena",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Donzella",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Dredge lure",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Drop shot worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Dumbell affondante",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Dumbell bilanciato",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Dumell",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Egg fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Egi",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Elk Hair Caddis",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Emergente",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "EP Handy Crab",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Expander pellet",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Fast jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Fathead minnow",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Fava da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Feather jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Feather lure da traina",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Fegato di pollo",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Filetto di sardina",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Filetto di sgombro",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Finesse jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Fiocchi d'avena",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Fiocchi di patata da pesca",
+    "type": "naturale",
+    "category": "pastura"
+  },
+  {
+    "name": "Fiocco di cotone aromatizzato",
+    "type": "misto",
+    "category": "altro"
+  },
+  {
+    "name": "Fiocco di pane",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Flat head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Flipping jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Fluke",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Flying fish",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Foam da pesca",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Football jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Fork tail",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Formaggio da pesca",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Free rig lure",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Frog fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Gamberetto di fosso",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gamberetto in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Gambero cotto",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero di scoglio",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero fantasma",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero grigio",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero mantide",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero rosso di fiume",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Gambero vivo",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Game Changer fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Garotta",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Gasteropode marino",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Gazzet",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Gizzard shad",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Glidebait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Glow in the dark corn",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Gobione",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Goby",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Gotcha fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Granchio di sabbia",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Granchio di scoglio",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Granchio favollo",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Granchio molle",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Grano bollito",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Grasso di pecora",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Green Hornet lure",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Green sunfish",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Grillo",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Groundbait",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Grub",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Grub doppio coda",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Gudgeon",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Gulp worm",
+    "type": "misto",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Gurgler",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Hair jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Hardened boilie",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Hare's Ear Nymph",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Hayabusa sabiki",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Hellgrammite in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Hornworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Hybrid spinnerbait",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Hybrid swimbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Ilander lure",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Inchikud",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Indiana blade spinner",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Inline spinner",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Insetto in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Intruder fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Jerkbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Jet Head",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Jigging spoon",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Jointed crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Jointed minnow",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Kabura",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Kicker frog",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Klinkhamer",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Kona Head",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Krill",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Lanzardo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Larva di effimera",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Larva di plecottero",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Larva di tricottero",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Larva di zanzara",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Latterino",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Lead head jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Leech in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Lefty's Deceiver",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Line thru swimbait",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Lipless crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Lipless sinking",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Lizard in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Lizza",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Lombrico d'acqua",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Lombrico di terra",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Long jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Lucanus jig",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Lugworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Lumaca d'acqua dolce",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Lupino da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Madai jig",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Mais",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Mais artificiale",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Mancina",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Marabou jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "March Brown",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Marmellata di fegato",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Marukyu pellet",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Mayfly nymph",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Mealworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Medium runner crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Menhaden",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Metal vibe",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Method mix",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Micro boilies",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Micro crank",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Micro jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Micro minnow",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Micro popper",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Micro rubber jig",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Micro spoon",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Micro-pellet da feeder",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Midges fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Minkie streamer",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Minnow floating",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Minnow sinking",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Minnow suspending",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Mitraillette",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Mold Craft lure",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Mop fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Mosca della carne",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Mosca secca",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Mosca sommersa",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Moscardino",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Mouse fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Muddler Minnow",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Mullet",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Multi-jointed swimbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Murice",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Muriddu",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Ned rig worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Needlefish lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Needlefish vivo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Neko worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Ninfa",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Noce tigre",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Nori essiccata da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Occhio di canna",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Octopus da traina",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Octopus in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Octopus skirt",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Oppai",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Orzo bollito",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Paddle tail",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Paguro",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Pane da pesca",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Pannocchia",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Parachute Adams",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Pasta da trota",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pasta di formaggio e baco",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pasta di gamberi",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pasta di sarde",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Paste da carpfishing",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Paste per trout area",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pastura in polvere",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Patella",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Pausa per piuma",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Pellet",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pellet affondante",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pellet galleggiante",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pellet perforato",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pencil bait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Perca flavescens",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Perca Vivo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Perdigon",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Perdigone tungsten",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Permit fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Persico reale piccolo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Persico sole",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Pheasant Tail Nymph",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Pillola essiccata per feeder",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pinkies",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Pintail",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Pisolaccio",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Piumino da traina",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plankton da pesca",
+    "type": "naturale",
+    "category": "crostaceo"
+  },
+  {
+    "name": "Plastic bread",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plastic caster",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plastic corn",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plastic dog biscuit",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plastic maggot",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Plastic tiger nut",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Plastic worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Plug da traina",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Plugging lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Plunger head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Polenta da pesca",
+    "type": "naturale",
+    "category": "pastura"
+  },
+  {
+    "name": "Polpo",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Pop-up boile",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Pop-up foam",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Popper",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Popper da mosca",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Porta-sasso",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Prince Nymph",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Propbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Punching jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Pupa di baco da seta",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Pupa di sedge",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Pusher head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "PVA bag mix",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "PVA nugget",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Ragworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Rana hollow body",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Rana in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Real fish replica lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Ribbon tail worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Riminese",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Roach",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Rodeo amaro",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Royal Wulff",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Rubber jig",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Rudd",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Sabiki",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Salmon fly classica",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Salpa",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "San Juan worm",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Sandworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Sanguisuga",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Sanguisuga sintetica",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Sardina",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Sardina in pasta",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Scardola",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Scented soft bait",
+    "type": "misto",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Scorfano",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Senko",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Seppia",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Serpente in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Sgombro",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Shad in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Shallow runner crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Shiner",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Shore jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Silkworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Sipunculo",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Skipjack vivo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Skipping lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Slant head lure",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Slow jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Slow Sinking plastic corn",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Soft centipede",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft crab",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft crayfish",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft duck",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft eel",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft garfish",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft hellgrammite",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft jerkbait",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft jighead bait",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft Kona",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft octopus",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft pellet",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Soft spider",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft squid",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soft swimbaits paddle",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Soluble boilie",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Spey fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Spin-tail jig",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Spinnerbait",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Spinning frog",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Spod mix",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Spoon da area trout",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Squarebill crankbait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Squatts",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Squirmy Wormy",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Stick mix",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Stickbait floating",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Stickbait sinking",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Stickworm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Stonefly nymph",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Straight worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Streamer",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Striscia di calamaro",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Striscia di seppia",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Subsurface walker",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Sugarello",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Surf Candy",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Surface crawler soft",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Swim jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Swimbait morbida",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Swimbait rigida",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Tai Rubber",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Tail spinner",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Tarma della farina",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Tarpon fly",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Tartufo di mare",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Tataki",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Teaser dodger",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Teaser flasher",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Tellina",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Tenebrio molitor",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Tenya",
+    "type": "misto",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Terrestre artificiale",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Testa di cefalo",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Threadfin shad",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Tigernut",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Toad in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Topolino in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Tremolina",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Triglia",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Triotto",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Trolling skirt",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Trolling spoon",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Trota da esca",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Trout gum",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Tubetto in silicone",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Tubicola",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Tungsten jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Underspin jig",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Uova di pesce artificiali",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Uova di salmone",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Uova di trota",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Uva da pesca",
+    "type": "naturale",
+    "category": "vegetale"
+  },
+  {
+    "name": "Vairone",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Ver de vase",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Verme di fango",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Verme di noce",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Verme di quadro",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Verme siliconico impannato",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Verme solitario",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Vertical jig",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Vibe",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Vongola",
+    "type": "naturale",
+    "category": "mollusco"
+  },
+  {
+    "name": "Wacky worm",
+    "type": "artificiale",
+    "category": "esca artificiale morbida"
+  },
+  {
+    "name": "Wafters",
+    "type": "misto",
+    "category": "pastura"
+  },
+  {
+    "name": "Wahoo express",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Wakebait",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Walking the Dog",
+    "type": "artificiale",
+    "category": "esca artificiale rigida"
+  },
+  {
+    "name": "Waxworm",
+    "type": "naturale",
+    "category": "verme"
+  },
+  {
+    "name": "Weedless spoon",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Willow blade spinner",
+    "type": "artificiale",
+    "category": "cucchiaino"
+  },
+  {
+    "name": "Witch lure",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Woolly Bugger",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Wurstel da pesca",
+    "type": "naturale",
+    "category": "altro"
+  },
+  {
+    "name": "Yellow perch",
+    "type": "naturale",
+    "category": "pesce"
+  },
+  {
+    "name": "Zig rig foam",
+    "type": "artificiale",
+    "category": "altro"
+  },
+  {
+    "name": "Zonker",
+    "type": "artificiale",
+    "category": "mosca artificiale"
+  },
+  {
+    "name": "Zophobas morio",
+    "type": "naturale",
+    "category": "verme"
+  }
+]

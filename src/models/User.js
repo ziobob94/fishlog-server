@@ -11,7 +11,16 @@ const UserSchema = new mongoose.Schema({
     facebook: { id: String }
   },
 
-  role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' }
+  role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
+
+  defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
+
+  passwordResetTokenHash: { type: String },
+  passwordResetExpires:   { type: Date },
+
+  pendingEmail:         { type: String },
+  emailChangeTokenHash: { type: String },
+  emailChangeExpires:   { type: Date }
 
 }, { timestamps: true })
 

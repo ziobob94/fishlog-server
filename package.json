@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development && node --watch src/index.js",
     "staging": "cross-env NODE_ENV=staging && node src/index.js",
-    "start": "cross-env NODE_ENV=production && node src/index.js"
+    "start": "cross-env NODE_ENV=production && node src/index.js",
+    "seed:species": "node scripts/seedSpecies.js",
+    "import:species": "node scripts/importAllSpecies.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
@@ -21,6 +23,7 @@
     "mongoose": "^8.3.4",
     "nanoid": "^5.0.7",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^10.0.0",
     "pino-pretty": "^11.0.0"
   },
   "devDependencies": {

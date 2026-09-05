@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import Group from '../models/Group.js'
 
 /**
@@ -11,6 +12,10 @@ export async function visibilityFilter(user) {
   }
 
   const userId = user.sub
+  // Le aggregation pipeline ($match), a differenza di Model.find(), non castano
+  // automaticamente una stringa a ObjectId: va fatto esplicitamente, altrimenti
+  // il confronto con il campo userId (ObjectId) non trova mai corrispondenza.
+  const userObjectId = new mongoose.Types.ObjectId(userId)
 
   // Gruppi di cui l'utente è membro
   const groups = await Group.find({ members: userId }).select('_id').lean()
@@ -20,7 +25,7 @@ export async function visibilityFilter(user) {
     return {
       hidden: { $ne: true },
       $or: [
-        { userId },
+        { userId: userObjectId },
         { visibility: 'users' },
         { visibility: 'group', allowedGroups: { $in: groupIds } }
       ]
@@ -31,7 +36,7 @@ export async function visibilityFilter(user) {
   return {
     hidden: { $ne: true },
     $or: [
-      { userId },
+      { userId: userObjectId },
       { visibility: 'users' },
       { visibility: 'group', allowedGroups: { $in: groupIds } }
     ]
