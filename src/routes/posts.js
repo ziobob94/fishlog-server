@@ -1,10 +1,47 @@
 import Post from '../models/Post.js'
 import Group from '../models/Group.js'
+import User from '../models/User.js'
 import { visibilityFilter, canEdit } from '../utils/postAccess.js'
 
 export default async function postRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
+
+  // GET /api/posts/unread-count — badge bacheca: nuovi post nel feed generale
+  // dall'ultima visita (esclusi i propri) + risposte ricevute sui propri
+  // eventi dall'ultima visita a "La mia bacheca" (escluse le proprie risposte).
+  app.get('/unread-count', auth, async (req) => {
+    const userId = req.user.sub
+    const user = await User.findById(userId).select('lastSeenFeedAt lastSeenBoardAt').lean()
+
+    const filter = await visibilityFilter(req.user)
+    const feedFilter = {
+      ...filter,
+      author: { $ne: userId },
+      createdAt: { $gt: user.lastSeenFeedAt }
+    }
+
+    const [feed, board] = await Promise.all([
+      Post.countDocuments(feedFilter),
+      Post.countDocuments({
+        author: userId,
+        type: 'event',
+        responses: { $elemMatch: { user: { $ne: userId }, createdAt: { $gt: user.lastSeenBoardAt } } }
+      })
+    ])
+
+    return { feed, board }
+  })
+
+  // POST /api/posts/mark-seen — segna come vista la bacheca generale o la propria
+  app.post('/mark-seen', auth, async (req, reply) => {
+    const { scope } = req.body
+    if (!['feed', 'board'].includes(scope)) return reply.status(400).send({ error: 'Scope non valido' })
+
+    const field = scope === 'feed' ? 'lastSeenFeedAt' : 'lastSeenBoardAt'
+    await User.findByIdAndUpdate(req.user.sub, { [field]: new Date() })
+    return { ok: true }
+  })
 
   // GET /api/posts — bacheca generale, o filtrata per author/group
   app.get('/', auth, async (req) => {

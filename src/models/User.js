@@ -15,6 +15,11 @@ const UserSchema = new mongoose.Schema({
 
   defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
 
+  // Ultima visita alla bacheca generale / alla propria, per calcolare il
+  // badge dei "non letti" senza dover tracciare ogni singolo post/risposta.
+  lastSeenFeedAt:  { type: Date, default: Date.now },
+  lastSeenBoardAt: { type: Date, default: Date.now },
+
   passwordResetTokenHash: { type: String },
   passwordResetExpires:   { type: Date },
 
