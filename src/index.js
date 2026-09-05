@@ -10,6 +10,7 @@ import staticFiles from '@fastify/static'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import mongoose from 'mongoose'
+import pretty from 'pino-pretty'
 import authorizePlugin from './plugins/authorize.js'
 
 import sessionRoutes from './routes/sessions.js'
@@ -22,9 +23,11 @@ import fp from 'fastify-plugin'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+// Stream sincrono (no worker thread): il transport pino-pretty basato su
+// worker crasha sotto `node --watch` (thread-stream orfano ai riavvii).
 const app = Fastify({
   logger: {
-    transport: { target: 'pino-pretty', options: { colorize: true } }
+    stream: pretty({ colorize: true })
   }
 })
 

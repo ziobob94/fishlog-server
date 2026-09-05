@@ -1,0 +1,18 @@
+{
+    "jwt": {
+        "secret": "CHANGE_ME_generate_a_long_random_string",
+        "expiresIn": "7d"
+    },
+    "oauth": {
+        "google": {
+            "clientId": "your-google-client-id",
+            "clientSecret": "your-google-client-secret",
+            "callbackUrl": "http://localhost:3001/api/auth/google/callback"
+        },
+        "facebook": {
+            "appId": "your-facebook-app-id",
+            "appSecret": "your-facebook-app-secret",
+            "callbackUrl": "http://localhost:3001/api/auth/facebook/callback"
+        }
+    }
+}

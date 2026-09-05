@@ -14,19 +14,22 @@
         "name": "Fishing Log Server",
         "dirs":{
             "uploads": "./uploads"
+        }
+    },
+    "jwt": {
+        "secret": "CHANGE_ME_IN_LOCAL_JSON",
+        "expiresIn": "7d"
+    },
+    "oauth": {
+        "google": {
+            "callbackUrl": "http://localhost:3001/api/auth/google/callback",
+            "clientId": "your-google-client-id",
+            "clientSecret": "your-google-client-secret"
         },
-        "auth": {
-            "jwt": {},
-            "google": {
-                "callbackUrl": "http://localhost:3001/api/auth/google/callback",
-                "clientId": "your-google-client-id",
-                "clientSecret": "your-google-client-secret"
-            },
-            "facebook": {
-                "callbackUrl": "http://localhost:3001/api/auth/facebook/callback",
-                "clientId": "your-facebook-client-id",
-                "clientSecret": "your-facebook-client-secret"
-            }  
-        } 
+        "facebook": {
+            "callbackUrl": "http://localhost:3001/api/auth/facebook/callback",
+            "appId": "your-facebook-app-id",
+            "appSecret": "your-facebook-app-secret"
+        }
     }
 }
