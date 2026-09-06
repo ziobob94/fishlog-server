@@ -35,13 +35,28 @@ function getTransport() {
   return transport
 }
 
+// Ricava una versione testuale approssimativa dall'HTML: i filtri antispam
+// penalizzano pesantemente le email che hanno solo la parte HTML.
+function htmlToText(html) {
+  return html
+    .replace(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis, '$2 ($1)')
+    .replace(/<\/(p|div|h[1-6])>/gi, '\n\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 export async function sendMail({ to, subject, html }) {
+  const text = htmlToText(html)
   const t = getTransport()
   if (!t) {
     console.log(`[mail:dev] to=${to} subject="${subject}"\n${html}\n`)
     return
   }
-  await t.sendMail({ from: cfg.get('mail.from', 'Fishlog <no-reply@fishlog.local>'), to, subject, html })
+  await t.sendMail({ from: cfg.get('mail.from', 'Fishlog <no-reply@fishlog.local>'), to, subject, html, text })
 }
 
 // Ogni file .hbs viene compilato una sola volta e tenuto in cache: i
