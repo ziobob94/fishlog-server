@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.5.1...server-v1.6.0) (2026-09-06)
+
+
+### Features
+
+* elimina singola notifica o svuota il centro notifiche ([ddf772a](https://github.com/ziobob94/fishlog-server/commit/ddf772a037acfe1d4b2065b98be95fbba6cb18b0))
+
 ## [1.5.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.5.0...server-v1.5.1) (2026-09-06)
 
 
