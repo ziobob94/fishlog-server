@@ -7,6 +7,9 @@ import User from '../models/User.js'
 import Session from '../models/Session.js'
 import Post from '../models/Post.js'
 import Group from '../models/Group.js'
+import Friendship from '../models/Friendship.js'
+import Conversation from '../models/Conversation.js'
+import Message from '../models/Message.js'
 import { sendMail, welcomeEmail, securityAlertEmail, passwordResetEmail, emailChangeConfirmEmail } from '../utils/mailer.js'
 
 const cfg = new AppConfig()
@@ -295,10 +298,15 @@ export default async function authRoutes(app) {
     if (blockingGroup)
       return reply.status(400).send({ error: `Trasferisci la proprietà del gruppo "${blockingGroup.name}" prima di eliminare l'account` })
 
+    const conversations = await Conversation.find({ participants: user._id }).select('_id')
+
     await Group.deleteMany({ _id: { $in: ownedGroups.map(g => g._id) } })
     await Group.updateMany({ members: user._id }, { $pull: { members: user._id } })
     await Session.deleteMany({ userId: user._id })
     await Post.deleteMany({ author: user._id })
+    await Friendship.deleteMany({ $or: [{ requester: user._id }, { recipient: user._id }] })
+    await Message.deleteMany({ conversation: { $in: conversations.map(c => c._id) } })
+    await Conversation.deleteMany({ _id: { $in: conversations.map(c => c._id) } })
     await User.findByIdAndDelete(user._id)
 
     return { deleted: true }

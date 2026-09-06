@@ -41,7 +41,12 @@ export default async function friendRoutes(app) {
       $or: [{ requester: userId }, { recipient: userId }]
     }).populate('requester', PUBLIC_FIELDS).populate('recipient', PUBLIC_FIELDS).lean()
 
-    const friends = rows.map(r => (r.requester._id.toString() === userId ? r.recipient : r.requester))
+    // requester/recipient possono risultare null se l'altro utente è stato
+    // eliminato nel frattempo (dati storici da prima della pulizia in fase
+    // di cancellazione account): li scartiamo per non rompere il frontend.
+    const friends = rows
+      .filter(r => r.requester && r.recipient)
+      .map(r => (r.requester._id.toString() === userId ? r.recipient : r.requester))
     return { data: friends }
   })
 
@@ -52,7 +57,11 @@ export default async function friendRoutes(app) {
       Friendship.find({ recipient: userId, status: 'pending' }).populate('requester', PUBLIC_FIELDS).lean(),
       Friendship.find({ requester: userId, status: 'pending' }).populate('recipient', PUBLIC_FIELDS).lean()
     ])
-    return { received, sent }
+    // vedi commento in GET / sui riferimenti orfani da utenti eliminati
+    return {
+      received: received.filter(r => r.requester),
+      sent: sent.filter(r => r.recipient)
+    }
   })
 
   // GET /api/friends/:userId/status — 'none' | 'friends' | 'sent' | 'received'
