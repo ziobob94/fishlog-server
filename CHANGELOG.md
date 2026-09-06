@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.7.0...server-v1.8.0) (2026-09-06)
+
+
+### Features
+
+* modifica ed eliminazione messaggi chat ([ef14edd](https://github.com/ziobob94/fishlog-server/commit/ef14edd718df83b22499a748a56049d669d5a4c4))
+
 # [1.7.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.6.0...server-v1.7.0) (2026-09-06)
 
 
