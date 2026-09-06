@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.3.0...server-v1.4.0) (2026-09-06)
+
+
+### Features
+
+* Aggiungi supporto per il testo delle email per migliorare la compatibilità con i filtri antispam ([65ff0e3](https://github.com/ziobob94/fishlog-server/commit/65ff0e3f8bf5350970cfed48926ac59ddcbe6298))
+
 # [1.3.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.2.0...server-v1.3.0) (2026-09-06)
 
 
