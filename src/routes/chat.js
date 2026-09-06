@@ -162,6 +162,20 @@ export default async function chatRoutes(app) {
       { conversation: conversation._id, sender: { $ne: req.user.sub }, readAt: null },
       { readAt: new Date() }
     )
+
+    // Aprire la chat equivale a leggerne i messaggi: le notifiche "nuovo
+    // messaggio" collegate a questa conversazione vanno segnate lette anche
+    // se l'utente non è passato dal centro notifiche, altrimenti restano
+    // visibili lì pur avendo già letto il messaggio.
+    const { modifiedCount } = await Notification.updateMany(
+      { recipient: req.user.sub, type: 'chat_message', 'data.conversationId': conversation._id, read: false },
+      { read: true }
+    )
+    if (modifiedCount > 0) {
+      const count = await Notification.countDocuments({ recipient: req.user.sub, read: false })
+      sendToUser(req.user.sub, { type: 'notifications:read', conversationId: conversation._id, count })
+    }
+
     return { ok: true }
   })
 }
