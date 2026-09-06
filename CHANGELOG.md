@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.5.0...server-v1.5.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* segna letta la notifica chat anche aprendo la chat direttamente ([fc09260](https://github.com/ziobob94/fishlog-server/commit/fc09260b588504a4210fd0525a0980136d6edb59))
+
 # [1.5.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.4.1...server-v1.5.0) (2026-09-06)
 
 
