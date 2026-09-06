@@ -7,7 +7,7 @@ import User from '../models/User.js'
 import Session from '../models/Session.js'
 import Post from '../models/Post.js'
 import Group from '../models/Group.js'
-import { sendMail, securityAlertEmail, passwordResetEmail, emailChangeConfirmEmail } from '../utils/mailer.js'
+import { sendMail, welcomeEmail, securityAlertEmail, passwordResetEmail, emailChangeConfirmEmail } from '../utils/mailer.js'
 
 const cfg = new AppConfig()
 
@@ -79,6 +79,8 @@ export default async function authRoutes(app) {
     await user.setPassword(password)
     await user.save()
 
+    await sendMail({ to: user.email, ...welcomeEmail(user.displayName, CLIENT_URL) })
+
     return reply.status(201).send({ token: signToken(user), user: publicUser(user) })
   })
 
@@ -114,6 +116,21 @@ export default async function authRoutes(app) {
         return reply.status(400).send({ error: 'Visibilità non valida' })
       user.defaultVisibility = defaultVisibility
     }
+    await user.save()
+    return publicUser(user)
+  })
+
+  // ── preferenze notifiche email ───────────────────────────────────────
+  app.patch('/me/notifications', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const { emailChatMessages, emailComments, emailLikes, emailFriendRequests } = req.body
+    if (emailChatMessages   !== undefined) user.notificationPreferences.emailChatMessages   = !!emailChatMessages
+    if (emailComments       !== undefined) user.notificationPreferences.emailComments       = !!emailComments
+    if (emailLikes          !== undefined) user.notificationPreferences.emailLikes          = !!emailLikes
+    if (emailFriendRequests !== undefined) user.notificationPreferences.emailFriendRequests = !!emailFriendRequests
+
     await user.save()
     return publicUser(user)
   })
@@ -380,6 +397,7 @@ export default async function authRoutes(app) {
     let user = await User.findOne({ [providerKey]: providerId })
     if (!user && email) user = await User.findOne({ email })
 
+    const isNewUser = !user
     if (!user) {
       user = new User({ email, displayName, avatar })
     } else {
@@ -389,6 +407,9 @@ export default async function authRoutes(app) {
 
     user.providers[provider] = { id: providerId }
     await user.save()
+
+    if (isNewUser && user.email) await sendMail({ to: user.email, ...welcomeEmail(user.displayName, CLIENT_URL) })
+
     return user
   }
 
@@ -400,6 +421,12 @@ export default async function authRoutes(app) {
       avatar:            user.avatar,
       role:              user.role,
       defaultVisibility: user.defaultVisibility,
+      notificationPreferences: {
+        emailChatMessages:   user.notificationPreferences?.emailChatMessages   !== false,
+        emailComments:       user.notificationPreferences?.emailComments       !== false,
+        emailLikes:          user.notificationPreferences?.emailLikes          !== false,
+        emailFriendRequests: user.notificationPreferences?.emailFriendRequests !== false
+      },
       hasPassword:       !!user.passwordHash,
       pendingEmail:      user.pendingEmail || null,
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }

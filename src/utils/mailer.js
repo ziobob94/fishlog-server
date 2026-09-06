@@ -1,7 +1,15 @@
 import nodemailer from 'nodemailer'
+import Handlebars from 'handlebars'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import AppConfig from '../config.js'
 
 const cfg = new AppConfig()
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const TEMPLATES_DIR = path.resolve(__dirname, '../emails/templates')
+const PARTIALS_DIR  = path.resolve(__dirname, '../emails/partials')
 
 let transport = null
 let transportChecked = false
@@ -36,39 +44,86 @@ export async function sendMail({ to, subject, html }) {
   await t.sendMail({ from: cfg.get('mail.from', 'Fishlog <no-reply@fishlog.local>'), to, subject, html })
 }
 
-function wrap(title, bodyHtml) {
-  return `<div style="font-family:sans-serif;max-width:480px;margin:0 auto">
-    <h2 style="color:#0ea5e9">${title}</h2>
-    ${bodyHtml}
-    <p style="color:#888;font-size:.8rem;margin-top:2rem">Fishlog</p>
-  </div>`
+// Ogni file .hbs viene compilato una sola volta e tenuto in cache: i
+// template non cambiano a runtime, ricompilarli ad ogni invio sarebbe
+// solo overhead.
+const compiledTemplates = new Map()
+
+function compile(name, dir) {
+  const key = `${dir}/${name}`
+  if (!compiledTemplates.has(key)) {
+    const source = fs.readFileSync(path.join(dir, `${name}.hbs`), 'utf8')
+    compiledTemplates.set(key, Handlebars.compile(source))
+  }
+  return compiledTemplates.get(key)
+}
+
+Handlebars.registerPartial('layout', compile('layout', PARTIALS_DIR))
+
+function render(title, templateName, data) {
+  const body = compile(templateName, TEMPLATES_DIR)(data)
+  return Handlebars.compile('{{> layout}}')({ title, body })
+}
+
+export function welcomeEmail(displayName, link) {
+  return {
+    subject: 'Benvenuto su Fishlog!',
+    html: render('Benvenuto su Fishlog', 'welcome', { displayName, link })
+  }
 }
 
 export function securityAlertEmail(actionText) {
   return {
     subject: 'Fishlog — avviso di sicurezza',
-    html: wrap('Avviso di sicurezza', `<p>${actionText}</p><p>Se non sei stato tu, contatta subito il supporto.</p>`)
+    html: render('Avviso di sicurezza', 'security-alert', { actionText })
   }
 }
 
 export function passwordResetEmail(link) {
   return {
     subject: 'Fishlog — reimposta la tua password',
-    html: wrap('Reimposta password', `
-      <p>Hai richiesto di reimpostare la password del tuo account Fishlog.</p>
-      <p><a href="${link}" style="color:#0ea5e9">Clicca qui per impostare una nuova password</a></p>
-      <p>Il link scade tra 1 ora. Se non hai richiesto tu il reset, ignora questa email.</p>
-    `)
+    html: render('Reimposta password', 'password-reset', { link })
   }
 }
 
 export function emailChangeConfirmEmail(link) {
   return {
     subject: 'Fishlog — conferma il cambio email',
-    html: wrap('Conferma nuova email', `
-      <p>Hai richiesto di cambiare l'email del tuo account Fishlog a questo indirizzo.</p>
-      <p><a href="${link}" style="color:#0ea5e9">Clicca qui per confermare</a></p>
-      <p>Il link scade tra 24 ore. Se non hai richiesto tu il cambio, ignora questa email.</p>
-    `)
+    html: render('Conferma nuova email', 'email-change-confirm', { link })
+  }
+}
+
+export function newChatMessageEmail(senderName, preview, link) {
+  return {
+    subject: `Fishlog — nuovo messaggio da ${senderName}`,
+    html: render('Nuovo messaggio', 'new-chat-message', { senderName, preview, link })
+  }
+}
+
+export function newCommentEmail(authorName, preview, link) {
+  return {
+    subject: `Fishlog — ${authorName} ha commentato il tuo post`,
+    html: render('Nuovo commento', 'new-comment', { authorName, preview, link })
+  }
+}
+
+export function newLikeEmail(actorName, link) {
+  return {
+    subject: `Fishlog — ${actorName} ha messo like al tuo post`,
+    html: render('Nuovo like', 'new-like', { actorName, link })
+  }
+}
+
+export function newFollowerEmail(actorName, link) {
+  return {
+    subject: `Fishlog — ${actorName} ha iniziato a seguirti`,
+    html: render('Nuovo follower', 'new-follower', { actorName, link })
+  }
+}
+
+export function friendRequestEmail(actorName, link) {
+  return {
+    subject: `Fishlog — ${actorName} ti ha inviato una richiesta di amicizia`,
+    html: render('Richiesta di amicizia', 'friend-request', { actorName, link })
   }
 }

@@ -15,6 +15,15 @@ const UserSchema = new mongoose.Schema({
 
   defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
 
+  // Preferenze email: ogni chiave è un tipo di notifica indipendente,
+  // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.
+  notificationPreferences: {
+    emailChatMessages:   { type: Boolean, default: true },
+    emailComments:       { type: Boolean, default: true },
+    emailLikes:          { type: Boolean, default: true },
+    emailFriendRequests: { type: Boolean, default: true }
+  },
+
   // Ultima visita alla bacheca generale / alla propria, per calcolare il
   // badge dei "non letti" senza dover tracciare ogni singolo post/risposta.
   lastSeenFeedAt:  { type: Date, default: Date.now },

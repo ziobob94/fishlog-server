@@ -1,6 +1,11 @@
 import Friendship from '../models/Friendship.js'
 import Group from '../models/Group.js'
 import User from '../models/User.js'
+import { sendMail, friendRequestEmail } from '../utils/mailer.js'
+import AppConfig from '../config.js'
+
+const cfg = new AppConfig()
+const CLIENT_URL = cfg.get('client.url')
 
 const PUBLIC_FIELDS = 'displayName email avatar'
 
@@ -76,13 +81,19 @@ export default async function friendRoutes(app) {
     if (!toUserId) return reply.status(400).send({ error: 'userId obbligatorio' })
     if (toUserId === userId) return reply.status(400).send({ error: 'Non puoi inviare una richiesta a te stesso' })
 
-    const target = await User.findById(toUserId).select('_id').lean()
+    const target = await User.findById(toUserId).select('_id email notificationPreferences').lean()
     if (!target) return reply.status(404).send({ error: 'Utente non trovato' })
 
     const existing = await findBetween(userId, toUserId)
     if (existing) return reply.status(409).send({ error: 'Richiesta già esistente o già amici' })
 
     const request = await new Friendship({ requester: userId, recipient: toUserId }).save()
+
+    if (target.email && target.notificationPreferences?.emailFriendRequests !== false) {
+      sendMail({ to: target.email, ...friendRequestEmail(req.user.name, `${CLIENT_URL}/friends`) })
+        .catch(err => app.log.error(err, 'Invio email richiesta amicizia fallito'))
+    }
+
     return reply.status(201).send(request)
   })
 

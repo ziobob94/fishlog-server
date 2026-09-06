@@ -1,6 +1,12 @@
 import Conversation from '../models/Conversation.js'
 import Message from '../models/Message.js'
 import Friendship from '../models/Friendship.js'
+import User from '../models/User.js'
+import AppConfig from '../config.js'
+import { sendMail, newChatMessageEmail } from '../utils/mailer.js'
+
+const cfg = new AppConfig()
+const CLIENT_URL = cfg.get('client.url')
 
 const PUBLIC_FIELDS = 'displayName email avatar'
 
@@ -21,6 +27,19 @@ async function findConversation(userA, userB) {
 
 function otherParticipant(conversation, userId) {
   return conversation.participants.find(p => p._id.toString() !== userId)
+}
+
+// Avvisa il destinatario via email, solo se ha l'email e non l'ha disattivato
+// dal profilo (Notifiche). Non blocca la risposta HTTP: va chiamata "fire and forget".
+async function notifyNewMessage(message, recipientId) {
+  const recipient = await User.findById(recipientId)
+  if (!recipient?.email || recipient.notificationPreferences?.emailChatMessages === false) return
+
+  const preview = message.body.length > 200 ? `${message.body.slice(0, 200)}…` : message.body
+  await sendMail({
+    to: recipient.email,
+    ...newChatMessageEmail(message.sender.displayName || 'Un utente', preview, `${CLIENT_URL}/chat`)
+  })
 }
 
 export default async function chatRoutes(app) {
@@ -105,6 +124,8 @@ export default async function chatRoutes(app) {
     conversation.lastMessageAt = message.createdAt
     await conversation.save()
     await message.populate('sender', PUBLIC_FIELDS)
+
+    notifyNewMessage(message, otherId).catch(err => app.log.error(err, 'Invio email nuovo messaggio fallito'))
 
     return reply.status(201).send(message)
   })

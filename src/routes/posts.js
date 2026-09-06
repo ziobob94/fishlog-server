@@ -3,6 +3,21 @@ import Group from '../models/Group.js'
 import User from '../models/User.js'
 import { visibilityFilter, canEdit } from '../utils/postAccess.js'
 import { distanceKm } from '../utils/geo.js'
+import { sendMail, newCommentEmail, newLikeEmail } from '../utils/mailer.js'
+import AppConfig from '../config.js'
+
+const cfg = new AppConfig()
+const CLIENT_URL = cfg.get('client.url')
+
+// Avvisa l'autore del post via email, se ha un'email, non è lui stesso ad
+// aver generato l'evento, e non l'ha disattivato dal profilo (Notifiche).
+// Fire-and-forget: non deve bloccare né far fallire la risposta HTTP.
+async function notifyPostAuthor(authorId, actorId, prefKey, buildEmail) {
+  if (authorId.toString() === actorId) return
+  const author = await User.findById(authorId).select('email notificationPreferences').lean()
+  if (!author?.email || author.notificationPreferences?.[prefKey] === false) return
+  await sendMail({ to: author.email, ...buildEmail() })
+}
 
 export default async function postRoutes(app) {
 
@@ -237,6 +252,11 @@ export default async function postRoutes(app) {
     post.comments.push({ user: req.user.sub, message: message.trim() })
     await post.save()
     await post.populate('comments.user', 'displayName avatar')
+
+    notifyPostAuthor(post.author, req.user.sub, 'emailComments', () =>
+      newCommentEmail(req.user.name, message.trim(), `${CLIENT_URL}/posts/${post._id}`)
+    ).catch(err => app.log.error(err, 'Invio email nuovo commento fallito'))
+
     return reply.status(201).send(post.comments[post.comments.length - 1])
   })
 
@@ -270,6 +290,13 @@ export default async function postRoutes(app) {
       post.likes.push(userId)
     }
     await post.save()
+
+    if (!alreadyLiked) {
+      notifyPostAuthor(post.author, userId, 'emailLikes', () =>
+        newLikeEmail(req.user.name, `${CLIENT_URL}/posts/${post._id}`)
+      ).catch(err => app.log.error(err, 'Invio email nuovo like fallito'))
+    }
+
     return { liked: !alreadyLiked, count: post.likes.length }
   })
 
