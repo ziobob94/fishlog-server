@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.2.0...server-v1.3.0) (2026-09-06)
+
+
+### Features
+
+* Aggiungi supporto per le notifiche email e nuovi template per le email ([cda22dc](https://github.com/ziobob94/fishlog-server/commit/cda22dc2d0e792094b751b7ea4dd976a3ca985b6))
+
 # [1.2.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.1.0...server-v1.2.0) (2026-09-05)
 
 
