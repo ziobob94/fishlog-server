@@ -1,7 +1,9 @@
 import Friendship from '../models/Friendship.js'
 import Group from '../models/Group.js'
 import User from '../models/User.js'
+import Notification from '../models/Notification.js'
 import { sendMail, friendRequestEmail } from '../utils/mailer.js'
+import { sendToUser } from '../ws/hub.js'
 import AppConfig from '../config.js'
 
 const cfg = new AppConfig()
@@ -18,6 +20,12 @@ function findBetween(userA, userB) {
       { requester: userB, recipient: userA }
     ]
   })
+}
+
+// Persiste una notifica e la spinge in realtime al destinatario, se connesso.
+async function notify(recipientId, type, actorId, data) {
+  const notification = await new Notification({ recipient: recipientId, type, actor: actorId, data }).save()
+  sendToUser(recipientId, { type: 'notification', payload: notification })
 }
 
 async function commonGroupIds(userA, userB) {
@@ -98,6 +106,9 @@ export default async function friendRoutes(app) {
 
     const request = await new Friendship({ requester: userId, recipient: toUserId }).save()
 
+    notify(toUserId, 'friend_request', userId, { requestId: request._id })
+      .catch(err => app.log.error(err, 'Creazione notifica richiesta amicizia fallita'))
+
     if (target.email && target.notificationPreferences?.emailFriendRequests !== false) {
       sendMail({ to: target.email, ...friendRequestEmail(req.user.name, `${CLIENT_URL}/friends`) })
         .catch(err => app.log.error(err, 'Invio email richiesta amicizia fallito'))
@@ -115,6 +126,10 @@ export default async function friendRoutes(app) {
 
     request.status = 'accepted'
     await request.save()
+
+    notify(request.requester, 'friend_accept', req.user.sub, { requestId: request._id })
+      .catch(err => app.log.error(err, 'Creazione notifica accettazione amicizia fallita'))
+
     return request
   })
 

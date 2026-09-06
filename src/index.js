@@ -7,6 +7,7 @@ import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
 import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
+import websocket from '@fastify/websocket'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import mongoose from 'mongoose'
@@ -23,7 +24,9 @@ import postRoutes       from './routes/posts.js'
 import userRoutes       from './routes/users.js'
 import friendRoutes     from './routes/friends.js'
 import chatRoutes       from './routes/chat.js'
+import notificationRoutes from './routes/notifications.js'
 import fp from 'fastify-plugin'
+import { registerConnection } from './ws/hub.js'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -71,6 +74,24 @@ await app.register(fp(async (instance) => {
 
 await app.register(authorizePlugin)
 
+await app.register(websocket)
+
+// Handshake WS autenticato via token in query string (i socket non passano
+// comodamente header Authorization). Alla connessione, registra il socket
+// nell'hub per l'invio realtime di notifiche/badge.
+app.get('/api/ws', { websocket: true }, (connection, req) => {
+  let userId
+  try {
+    const token = req.query?.token
+    if (!token) throw new Error('missing token')
+    userId = app.jwt.verify(token).sub
+  } catch {
+    connection.close(1008, 'Non autenticato')
+    return
+  }
+  registerConnection(userId, connection)
+})
+
 await app.register(authRoutes,    { prefix: '/api/auth' })
 await app.register(sessionRoutes, { prefix: '/api/sessions' })
 await app.register(mediaRoutes,   { prefix: '/api/media' })
@@ -81,6 +102,7 @@ await app.register(postRoutes,    { prefix: '/api/posts' })
 await app.register(userRoutes,    { prefix: '/api/users' })
 await app.register(friendRoutes,  { prefix: '/api/friends' })
 await app.register(chatRoutes,    { prefix: '/api/chat' })
+await app.register(notificationRoutes, { prefix: '/api/notifications' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 

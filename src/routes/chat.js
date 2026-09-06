@@ -2,8 +2,10 @@ import Conversation from '../models/Conversation.js'
 import Message from '../models/Message.js'
 import Friendship from '../models/Friendship.js'
 import User from '../models/User.js'
+import Notification from '../models/Notification.js'
 import AppConfig from '../config.js'
 import { sendMail, newChatMessageEmail } from '../utils/mailer.js'
+import { sendToUser } from '../ws/hub.js'
 
 const cfg = new AppConfig()
 const CLIENT_URL = cfg.get('client.url')
@@ -19,6 +21,30 @@ async function areFriends(userA, userB) {
     ]
   }).lean()
   return !!row
+}
+
+async function unreadCountFor(userId) {
+  const conversations = await Conversation.find({ participants: userId }).select('_id').lean()
+  return Message.countDocuments({
+    conversation: { $in: conversations.map(c => c._id) },
+    sender: { $ne: userId },
+    readAt: null
+  })
+}
+
+// Persiste una notifica "nuovo messaggio" e spinge in realtime il conteggio
+// non letti aggiornato, così il badge si aggiorna senza ricaricare la lista.
+async function notifyNewChatEvent(recipientId, message) {
+  const notification = await new Notification({
+    recipient: recipientId,
+    type: 'chat_message',
+    actor: message.sender._id ?? message.sender,
+    data: { conversationId: message.conversation }
+  }).save()
+  sendToUser(recipientId, { type: 'notification', payload: notification })
+
+  const count = await unreadCountFor(recipientId)
+  sendToUser(recipientId, { type: 'chat:unread', conversationId: message.conversation, count })
 }
 
 async function findConversation(userA, userB) {
@@ -69,13 +95,7 @@ export default async function chatRoutes(app) {
 
   // GET /api/chat/unread-count — badge icona chat: somma dei non letti su tutte le conversazioni
   app.get('/unread-count', auth, async (req) => {
-    const userId = req.user.sub
-    const conversations = await Conversation.find({ participants: userId }).select('_id').lean()
-    const count = await Message.countDocuments({
-      conversation: { $in: conversations.map(c => c._id) },
-      sender: { $ne: userId },
-      readAt: null
-    })
+    const count = await unreadCountFor(req.user.sub)
     return { count }
   })
 
@@ -126,6 +146,7 @@ export default async function chatRoutes(app) {
     await message.populate('sender', PUBLIC_FIELDS)
 
     notifyNewMessage(message, otherId).catch(err => app.log.error(err, 'Invio email nuovo messaggio fallito'))
+    notifyNewChatEvent(otherId, message).catch(err => app.log.error(err, 'Creazione notifica nuovo messaggio fallita'))
 
     return reply.status(201).send(message)
   })
