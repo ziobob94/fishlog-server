@@ -2,6 +2,7 @@ import Post from '../models/Post.js'
 import Group from '../models/Group.js'
 import User from '../models/User.js'
 import { visibilityFilter, canEdit } from '../utils/postAccess.js'
+import { distanceKm } from '../utils/geo.js'
 
 export default async function postRoutes(app) {
 
@@ -43,9 +44,13 @@ export default async function postRoutes(app) {
     return { ok: true }
   })
 
-  // GET /api/posts — bacheca generale, o filtrata per author/group
+  // GET /api/posts — bacheca generale, filtrabile per tipo/visibilità/data/autore/gruppo
+  // e, per gli eventi, per vicinanza geografica (con relativo ordinamento).
   app.get('/', auth, async (req) => {
-    const { page = 1, limit = 20, author, group } = req.query
+    const {
+      page = 1, limit = 20, author, group, type, visibility,
+      dateFrom, dateTo, near, radiusKm, sort
+    } = req.query
     const filter = await visibilityFilter(req.user)
 
     if (author) filter.author = author
@@ -53,20 +58,63 @@ export default async function postRoutes(app) {
       filter.visibility = 'group'
       filter.allowedGroups = group
     }
+    if (['post', 'event'].includes(type)) filter.type = type
+    if (['public', 'group', 'private'].includes(visibility)) filter.visibility = visibility
 
-    const skip = (parseInt(page) - 1) * parseInt(limit)
+    const dateField = type === 'event' ? 'event.date' : 'createdAt'
+    if (dateFrom || dateTo) {
+      filter[dateField] = {}
+      if (dateFrom) filter[dateField].$gte = new Date(dateFrom)
+      if (dateTo) filter[dateField].$lte = new Date(`${dateTo}T23:59:59.999`)
+    }
+
+    let nearCoords = null
+    if (type === 'event' && near) {
+      const [lat, lng] = String(near).split(',').map(Number)
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) nearCoords = { lat, lng }
+    }
+
+    const pageNum  = parseInt(page)
+    const limitNum = parseInt(limit)
+
+    const populatePost = (q) => q
+      .populate('author', 'displayName avatar')
+      .populate('allowedGroups', 'name')
+      .populate('comments.user', 'displayName avatar')
+      .populate('responses.user', 'displayName avatar')
+      .populate('event.attendees.user', 'displayName avatar')
+      .lean()
+
+    // Filtro/ordinamento per vicinanza: le coordinate non sono un indice geo,
+    // quindi calcoliamo la distanza in memoria su tutti i match e pagina qui.
+    if (nearCoords) {
+      const all = await populatePost(Post.find(filter))
+      const radius = radiusKm ? parseFloat(radiusKm) : null
+
+      let withDistance = all
+        .map(p => ({ ...p, distanceKm: distanceKm(nearCoords, p.event?.location) }))
+        .filter(p => p.distanceKm != null && (!radius || p.distanceKm <= radius))
+
+      withDistance.sort(sort === 'date'
+        ? (a, b) => new Date(a.event?.date || 0) - new Date(b.event?.date || 0)
+        : (a, b) => a.distanceKm - b.distanceKm)
+
+      const total = withDistance.length
+      const skip = (pageNum - 1) * limitNum
+      const posts = withDistance.slice(skip, skip + limitNum)
+
+      return { data: posts, pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
+    }
+
+    const sortSpec = type === 'event' && sort === 'date' ? { 'event.date': 1 } : { createdAt: -1 }
+
+    const skip = (pageNum - 1) * limitNum
     const [posts, total] = await Promise.all([
-      Post.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip).limit(parseInt(limit))
-        .populate('author', 'displayName avatar')
-        .populate('allowedGroups', 'name')
-        .populate('comments.user', 'displayName avatar')
-        .lean(),
+      populatePost(Post.find(filter).sort(sortSpec).skip(skip).limit(limitNum)),
       Post.countDocuments(filter)
     ])
 
-    return { data: posts, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } }
+    return { data: posts, pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
   })
 
   // POST /api/posts — crea post/evento
@@ -105,6 +153,7 @@ export default async function postRoutes(app) {
       .populate('allowedGroups', 'name')
       .populate('responses.user', 'displayName avatar')
       .populate('comments.user', 'displayName avatar')
+      .populate('event.attendees.user', 'displayName avatar')
       .lean()
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
     return post
@@ -149,6 +198,31 @@ export default async function postRoutes(app) {
     await post.save()
     await post.populate('responses.user', 'displayName avatar')
     return reply.status(201).send(post.responses[post.responses.length - 1])
+  })
+
+  // POST /api/posts/:id/attendance — partecipo/forse/non partecipo (+ ospiti) a un evento
+  app.post('/:id/attendance', auth, async (req, reply) => {
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter })
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+    if (post.type !== 'event') return reply.status(400).send({ error: 'Solo gli eventi accettano adesioni' })
+    if (post.event?.status !== 'open') return reply.status(400).send({ error: 'Evento chiuso' })
+
+    const { status, guests } = req.body
+    if (!['going', 'maybe', 'not_going'].includes(status)) return reply.status(400).send({ error: 'Stato non valido' })
+    const guestCount = Math.max(0, parseInt(guests, 10) || 0)
+
+    const existing = post.event.attendees.find(a => a.user.toString() === req.user.sub)
+    if (existing) {
+      existing.status = status
+      existing.guests = guestCount
+    } else {
+      post.event.attendees.push({ user: req.user.sub, status, guests: guestCount })
+    }
+    await post.save()
+    await post.populate('event.attendees.user', 'displayName avatar')
+    await post.populate('author', 'displayName avatar')
+    return post
   })
 
   // POST /api/posts/:id/comments — commenta un post (qualunque tipo)
