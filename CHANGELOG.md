@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.4.1...server-v1.5.0) (2026-09-06)
+
+
+### Features
+
+* aggiungi notifiche realtime via websocket ([be4fa96](https://github.com/ziobob94/fishlog-server/commit/be4fa96d4749d4df3df22c84f33fae66c7f89db1))
+
 ## [1.4.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.4.0...server-v1.4.1) (2026-09-06)
 
 
