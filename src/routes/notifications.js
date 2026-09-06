@@ -37,4 +37,17 @@ export default async function notificationRoutes(app) {
     await Notification.updateMany({ recipient: req.user.sub, read: false }, { read: true })
     return { ok: true }
   })
+
+  // DELETE /api/notifications/:id
+  app.delete('/:id', auth, async (req, reply) => {
+    const notification = await Notification.findOneAndDelete({ _id: req.params.id, recipient: req.user.sub })
+    if (!notification) return reply.status(404).send({ error: 'Notifica non trovata' })
+    return { deleted: true }
+  })
+
+  // DELETE /api/notifications — svuota tutto il centro notifiche
+  app.delete('/', auth, async (req) => {
+    await Notification.deleteMany({ recipient: req.user.sub })
+    return { deleted: true }
+  })
 }
