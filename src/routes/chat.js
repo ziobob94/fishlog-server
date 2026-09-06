@@ -240,6 +240,52 @@ export default async function chatRoutes(app) {
     return reply.status(201).send(result)
   })
 
+  // PATCH /api/chat/messages/:messageId — modifica un messaggio di testo proprio
+  app.patch('/messages/:messageId', auth, async (req, reply) => {
+    const message = await Message.findById(req.params.messageId)
+    if (!message) return reply.status(404).send({ error: 'Messaggio non trovato' })
+    if (message.sender.toString() !== req.user.sub) return reply.status(403).send({ error: 'Permesso negato' })
+    if (message.deleted) return reply.status(400).send({ error: 'Messaggio eliminato' })
+    if (message.type !== 'text') return reply.status(400).send({ error: 'Puoi modificare solo i messaggi di testo' })
+
+    const { body } = req.body
+    if (!body?.trim()) return reply.status(400).send({ error: 'Messaggio obbligatorio' })
+
+    message.body = body.trim()
+    message.editedAt = new Date()
+    await message.save()
+    await message.populate('sender', PUBLIC_FIELDS)
+
+    const conversation = await Conversation.findById(message.conversation)
+    const otherId = conversation.participants.find(p => p.toString() !== req.user.sub)?.toString()
+    if (otherId) sendToUser(otherId, { type: 'chat:message-updated', conversationId: message.conversation, message })
+
+    return withMediaUrl(message.toObject(), req)
+  })
+
+  // DELETE /api/chat/messages/:messageId — elimina (per entrambi) un proprio messaggio
+  app.delete('/messages/:messageId', auth, async (req, reply) => {
+    const message = await Message.findById(req.params.messageId)
+    if (!message) return reply.status(404).send({ error: 'Messaggio non trovato' })
+    if (message.sender.toString() !== req.user.sub) return reply.status(403).send({ error: 'Permesso negato' })
+
+    if (message.media?.filename) {
+      try { await fs.unlink(path.join(uploadsDir(), message.media.filename)) } catch {}
+    }
+
+    message.deleted = true
+    message.body = undefined
+    message.media = undefined
+    message.location = undefined
+    await message.save()
+
+    const conversation = await Conversation.findById(message.conversation)
+    const otherId = conversation.participants.find(p => p.toString() !== req.user.sub)?.toString()
+    if (otherId) sendToUser(otherId, { type: 'chat:message-deleted', conversationId: message.conversation, messageId: message._id })
+
+    return { deleted: true }
+  })
+
   // POST /api/chat/:conversationId/read — segna come lette le mie ricevute in questa conversazione
   app.post('/:conversationId/read', auth, async (req, reply) => {
     const conversation = await Conversation.findById(req.params.conversationId)

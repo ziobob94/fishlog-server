@@ -20,7 +20,9 @@ const MessageSchema = new mongoose.Schema({
   },
   // Solo chat 1:1: basta un unico readAt (il destinatario è sempre l'altro
   // partecipante) invece di un array di letture per utente.
-  readAt:       { type: Date, default: null }
+  readAt:       { type: Date, default: null },
+  editedAt:     { type: Date, default: null },
+  deleted:      { type: Boolean, default: false }
 }, { timestamps: true })
 
 MessageSchema.index({ conversation: 1, createdAt: 1 })
