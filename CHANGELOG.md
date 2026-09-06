@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.6.0...server-v1.7.0) (2026-09-06)
+
+
+### Features
+
+* chat completa - media, file, posizione, vocali ([9c453ef](https://github.com/ziobob94/fishlog-server/commit/9c453ef4514e68c8bb3cbfb945db2035d933d311))
+
 # [1.6.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.5.1...server-v1.6.0) (2026-09-06)
 
 
