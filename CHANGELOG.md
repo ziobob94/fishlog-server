@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.4.0...server-v1.4.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* pulisci amicizie e chat alla cancellazione account ([6658613](https://github.com/ziobob94/fishlog-server/commit/665861374b868c6378b068457338c512048573f5))
+
 # [1.4.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.3.0...server-v1.4.0) (2026-09-06)
 
 
