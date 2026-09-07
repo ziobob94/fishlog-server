@@ -17,10 +17,16 @@ const UserSchema = new mongoose.Schema({
 
   // Un utente può attivare la "modalità negozio" per pubblicare una vetrina
   // e vedere i propri annunci etichettati come "negozio" invece che "privato".
+  // L'attivazione richiede l'approvazione di un admin (verificationStatus):
+  // finché non è "verified" gli annunci restano visibili ma etichettati
+  // "in verifica" lato client.
   shop: {
-    enabled:     { type: Boolean, default: false },
-    name:        { type: String, trim: true },
-    description: { type: String, trim: true }
+    enabled:             { type: Boolean, default: false },
+    name:                { type: String, trim: true },
+    description:         { type: String, trim: true },
+    verificationStatus:  { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
+    verificationRequestedAt: { type: Date },
+    verifiedAt:          { type: Date }
   },
 
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,

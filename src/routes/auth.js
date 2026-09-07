@@ -129,7 +129,15 @@ export default async function authRoutes(app) {
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
     const { enabled, name, description } = req.body
-    if (enabled !== undefined)     user.shop.enabled = !!enabled
+    // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
+    // in coda di revisione: solo l'admin può portarla a "verified".
+    if (enabled !== undefined) {
+      user.shop.enabled = !!enabled
+      if (enabled && ['none', 'rejected'].includes(user.shop.verificationStatus)) {
+        user.shop.verificationStatus = 'pending'
+        user.shop.verificationRequestedAt = new Date()
+      }
+    }
     if (name !== undefined)        user.shop.name = name
     if (description !== undefined) user.shop.description = description
 
@@ -452,9 +460,10 @@ export default async function authRoutes(app) {
       hasPassword:       !!user.passwordHash,
       pendingEmail:      user.pendingEmail || null,
       shop: {
-        enabled:     !!user.shop?.enabled,
-        name:        user.shop?.name || '',
-        description: user.shop?.description || ''
+        enabled:            !!user.shop?.enabled,
+        name:               user.shop?.name || '',
+        description:        user.shop?.description || '',
+        verificationStatus: user.shop?.verificationStatus || 'none'
       },
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }
     }

@@ -44,6 +44,35 @@ export default async function adminRoutes(app) {
     return { deleted: true }
   })
 
+  // GET /api/admin/shops/pending — richieste di attivazione negozio da revisionare
+  app.get('/shops/pending', adminOnly, async () => {
+    const data = await User.find({ 'shop.verificationStatus': 'pending' })
+      .select('displayName email shop').sort({ 'shop.verificationRequestedAt': 1 }).lean()
+    return { data }
+  })
+
+  // POST /api/admin/shops/:id/approve
+  app.post('/shops/:id/approve', adminOnly, async (req, reply) => {
+    const user = await User.findById(req.params.id)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    user.shop.verificationStatus = 'verified'
+    user.shop.verifiedAt = new Date()
+    await user.save()
+    return user.sanitize()
+  })
+
+  // POST /api/admin/shops/:id/reject
+  app.post('/shops/:id/reject', adminOnly, async (req, reply) => {
+    const user = await User.findById(req.params.id)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    user.shop.verificationStatus = 'rejected'
+    user.shop.enabled = false
+    await user.save()
+    return user.sanitize()
+  })
+
   // GET /api/admin/sessions — tutte le sessioni
   app.get('/sessions', modOrAdmin, async (req) => {
     const { page = 1, limit = 30, userId, hidden } = req.query

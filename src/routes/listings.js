@@ -74,7 +74,8 @@ export default async function listingRoutes(app) {
   // GET /api/listings/mine — annunci dell'utente loggato (inclusi non attivi)
   app.get('/mine', auth, async (req) => {
     const baseUrl = `${req.protocol}://${req.headers.host}`
-    const listings = await Listing.find({ seller: req.user.sub, status: { $ne: 'deleted' } }).sort({ createdAt: -1 }).lean()
+    const listings = await Listing.find({ seller: req.user.sub, status: { $ne: 'deleted' } })
+      .sort({ createdAt: -1 }).populate('seller', 'displayName avatar shop').lean()
     return { data: listings.map(l => withMediaUrls(baseUrl, l)) }
   })
 
