@@ -123,6 +123,20 @@ export default async function authRoutes(app) {
     return publicUser(user)
   })
 
+  // ── modalità negozio (vetrina nel market) ────────────────────────────
+  app.patch('/me/shop', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const { enabled, name, description } = req.body
+    if (enabled !== undefined)     user.shop.enabled = !!enabled
+    if (name !== undefined)        user.shop.name = name
+    if (description !== undefined) user.shop.description = description
+
+    await user.save()
+    return publicUser(user)
+  })
+
   // ── preferenze notifiche email ───────────────────────────────────────
   app.patch('/me/notifications', { preHandler: [app.authenticate] }, async (req, reply) => {
     const user = await User.findById(req.user.sub)
@@ -437,6 +451,11 @@ export default async function authRoutes(app) {
       },
       hasPassword:       !!user.passwordHash,
       pendingEmail:      user.pendingEmail || null,
+      shop: {
+        enabled:     !!user.shop?.enabled,
+        name:        user.shop?.name || '',
+        description: user.shop?.description || ''
+      },
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }
     }
   }

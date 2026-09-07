@@ -42,6 +42,11 @@
         },
         "from": "Fishlog <no-reply@fishlog.local>"
     },
+    "ebay": {
+        "clientId": "",
+        "clientSecret": "",
+        "sandbox": false
+    },
     "features": {
         "passwordAuth": true
     }

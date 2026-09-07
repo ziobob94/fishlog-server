@@ -15,6 +15,14 @@ const UserSchema = new mongoose.Schema({
 
   defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
 
+  // Un utente può attivare la "modalità negozio" per pubblicare una vetrina
+  // e vedere i propri annunci etichettati come "negozio" invece che "privato".
+  shop: {
+    enabled:     { type: Boolean, default: false },
+    name:        { type: String, trim: true },
+    description: { type: String, trim: true }
+  },
+
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
   // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.
   notificationPreferences: {

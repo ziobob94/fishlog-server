@@ -3,9 +3,11 @@ import path from 'path'
 import { nanoid } from 'nanoid'
 import Session from '../models/Session.js'
 import Post from '../models/Post.js'
+import Listing from '../models/Listing.js'
 import AppConfig from '../config.js'
 import { canEdit } from '../utils/sessionAccess.js'
 import { canEdit as canEditPost } from '../utils/postAccess.js'
+import { canEdit as canEditListing } from '../utils/listingAccess.js'
 
 const cfg = new AppConfig()
 
@@ -205,6 +207,51 @@ export default async function mediaRoutes(app) {
 
     item.caption = req.body.caption || ''
     await post.save()
+    return { updated: true }
+  })
+
+  // ─── Media sugli annunci del market ─────────────────────────────────────────
+
+  // POST /api/media/upload/listing/:listingId
+  app.post('/upload/listing/:listingId', auth, async (req, reply) => {
+    const listing = await Listing.findById(req.params.listingId)
+    if (!listing) return reply.status(404).send({ error: 'Annuncio non trovato' })
+    if (!canEditListing(req.user, listing)) return reply.status(403).send({ error: 'Permesso negato' })
+
+    const uploaded = await writeUploadedFiles(req, listing.media)
+    await listing.save()
+
+    const baseUrl = `${req.protocol}://${req.headers.host}`
+    return reply.send({ uploaded: uploaded.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) })
+  })
+
+  // DELETE /api/media/listing/:listingId/:mediaId
+  app.delete('/listing/:listingId/:mediaId', auth, async (req, reply) => {
+    const listing = await Listing.findById(req.params.listingId)
+    if (!listing) return reply.status(404).send({ error: 'Annuncio non trovato' })
+    if (!canEditListing(req.user, listing)) return reply.status(403).send({ error: 'Permesso negato' })
+
+    const item = listing.media.id(req.params.mediaId)
+    if (!item) return reply.status(404).send({ error: 'Media not found' })
+
+    try { await fs.unlink(path.join(uploadsDir(), item.filename)) } catch {}
+
+    item.deleteOne()
+    await listing.save()
+    return { deleted: true }
+  })
+
+  // PATCH /api/media/listing/:listingId/:mediaId/caption
+  app.patch('/listing/:listingId/:mediaId/caption', auth, async (req, reply) => {
+    const listing = await Listing.findById(req.params.listingId)
+    if (!listing) return reply.status(404).send({ error: 'Annuncio non trovato' })
+    if (!canEditListing(req.user, listing)) return reply.status(403).send({ error: 'Permesso negato' })
+
+    const item = listing.media.id(req.params.mediaId)
+    if (!item) return reply.status(404).send({ error: 'Media not found' })
+
+    item.caption = req.body.caption || ''
+    await listing.save()
     return { updated: true }
   })
 }
