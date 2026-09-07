@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.8.0...server-v1.9.0) (2026-09-07)
+
+
+### Features
+
+* aggiungi market (annunci P2P, vetrine negozio, fallback eBay) ([0719e66](https://github.com/ziobob94/fishlog-server/commit/0719e66c72ff86fc8f3ff2cf818c8cf8bde23ce8))
+
 # [1.8.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.7.0...server-v1.8.0) (2026-09-06)
 
 
