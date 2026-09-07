@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.9.0...server-v1.10.0) (2026-09-07)
+
+
+### Features
+
+* aggiungi verifica admin per l'attivazione della modalità negozio ([15c5856](https://github.com/ziobob94/fishlog-server/commit/15c5856a5e163996ad8e49636e119214ee4c6897))
+
 # [1.9.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.8.0...server-v1.9.0) (2026-09-07)
 
 
