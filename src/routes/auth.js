@@ -14,13 +14,16 @@ import { sendMail, welcomeEmail, securityAlertEmail, passwordResetEmail, emailCh
 
 const cfg = new AppConfig()
 
-const GOOGLE_CLIENT_ID     = cfg.get('oauth.google.clientId')
-const GOOGLE_CLIENT_SECRET = cfg.get('oauth.google.clientSecret')
-const GOOGLE_CALLBACK_URL  = cfg.get('oauth.google.callbackUrl')
+// Lette ad ogni chiamata (non in costanti a livello di modulo): sono tra le
+// configurazioni modificabili da pannello admin, un valore salvato deve
+// valere dalla richiesta successiva senza riavviare il processo.
+const googleClientId     = () => cfg.get('oauth.google.clientId', '')
+const googleClientSecret = () => cfg.get('oauth.google.clientSecret', '')
+const googleCallbackUrl  = () => cfg.get('oauth.google.callbackUrl', '')
 
-const FACEBOOK_APP_ID      = cfg.get('oauth.facebook.appId')
-const FACEBOOK_APP_SECRET  = cfg.get('oauth.facebook.appSecret')
-const FACEBOOK_CALLBACK_URL = cfg.get('oauth.facebook.callbackUrl')
+const facebookAppId       = () => cfg.get('oauth.facebook.appId', '')
+const facebookAppSecret   = () => cfg.get('oauth.facebook.appSecret', '')
+const facebookCallbackUrl = () => cfg.get('oauth.facebook.callbackUrl', '')
 
 const CLIENT_URL = cfg.get('client.url')
 
@@ -337,8 +340,8 @@ export default async function authRoutes(app) {
   // ── Google OAuth ───────────────────────────────────────────────────────
   app.get('/google', async (req, reply) => {
     const params = new URLSearchParams({
-      client_id:     GOOGLE_CLIENT_ID,
-      redirect_uri:  GOOGLE_CALLBACK_URL,
+      client_id:     googleClientId(),
+      redirect_uri:  googleCallbackUrl(),
       response_type: 'code',
       scope:         'openid email profile',
       access_type:   'online'
@@ -356,9 +359,9 @@ export default async function authRoutes(app) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id:     GOOGLE_CLIENT_ID,
-        client_secret: GOOGLE_CLIENT_SECRET,
-        redirect_uri:  GOOGLE_CALLBACK_URL,
+        client_id:     googleClientId(),
+        client_secret: googleClientSecret(),
+        redirect_uri:  googleCallbackUrl(),
         grant_type:    'authorization_code'
       })
     })
@@ -382,8 +385,8 @@ export default async function authRoutes(app) {
   // ── Facebook OAuth ─────────────────────────────────────────────────────
   app.get('/facebook', async (req, reply) => {
     const params = new URLSearchParams({
-      client_id:     FACEBOOK_APP_ID,
-      redirect_uri:  FACEBOOK_CALLBACK_URL,
+      client_id:     facebookAppId(),
+      redirect_uri:  facebookCallbackUrl(),
       response_type: 'code',
       scope:         'email,public_profile'
     })
@@ -397,9 +400,9 @@ export default async function authRoutes(app) {
     const tokenRes = await fetch(
       `https://graph.facebook.com/v19.0/oauth/access_token?` +
       new URLSearchParams({
-        client_id:     FACEBOOK_APP_ID,
-        client_secret: FACEBOOK_APP_SECRET,
-        redirect_uri:  FACEBOOK_CALLBACK_URL,
+        client_id:     facebookAppId(),
+        client_secret: facebookAppSecret(),
+        redirect_uri:  facebookCallbackUrl(),
         code
       })
     )

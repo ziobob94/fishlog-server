@@ -28,6 +28,7 @@ import notificationRoutes from './routes/notifications.js'
 import listingRoutes    from './routes/listings.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
+import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -115,5 +116,11 @@ try {
   app.log.error({ err }, 'MongoDB connection failed')
   process.exit(1)
 }
+
+// Configurazioni modificabili da admin (eBay, OAuth, SMTP, feature flag...):
+// caricate ora che il DB è connesso, poi rilette periodicamente così un
+// salvataggio da un altro processo (PM2 cluster) arriva senza riavvio.
+await reloadRuntimeConfig()
+startPeriodicReload()
 
 await app.listen({ port: cfg.get('api.port'), host: cfg.get('api.host') });

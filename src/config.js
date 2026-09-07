@@ -1,4 +1,5 @@
 import pkg from 'config'
+import { getOverride } from './runtimeConfigStore.js'
 
 export default class AppConfig {
 
@@ -25,6 +26,9 @@ export default class AppConfig {
   }
 
   get(key, defaultValue = undefined) {
+    const override = getOverride(key)
+    if (override !== undefined) return override
+
     if (!pkg.has(key)) {
       if (defaultValue !== undefined) return defaultValue
       throw new Error(`Missing config: ${key}`)

@@ -1,5 +1,11 @@
 import User from '../models/User.js'
 import Session from '../models/Session.js'
+import RuntimeConfig from '../models/RuntimeConfig.js'
+import AppConfig from '../config.js'
+import { reloadRuntimeConfig } from '../runtimeConfigStore.js'
+import { CONFIG_MANIFEST, CONFIG_MANIFEST_BY_KEY } from '../configManifest.js'
+
+const cfg = new AppConfig()
 
 export default async function adminRoutes(app) {
 
@@ -87,5 +93,43 @@ export default async function adminRoutes(app) {
       Session.countDocuments(filter)
     ])
     return { data: sessions, pagination: { page: parseInt(page), total, pages: Math.ceil(total / parseInt(limit)) } }
+  })
+
+  // GET /api/admin/config — configurazioni modificabili da interfaccia
+  // (eBay, OAuth, SMTP, feature flag...). I valori "secret" non vengono mai
+  // restituiti in chiaro: solo un flag hasValue che dice se sono impostati.
+  app.get('/config', adminOnly, async () => {
+    return CONFIG_MANIFEST.map(({ key, group, label, type, secret }) => {
+      const raw = cfg.get(key, type === 'boolean' ? false : '')
+      return {
+        key, group, label, type, secret,
+        value: secret ? '' : raw,
+        hasValue: secret ? !!raw : undefined
+      }
+    })
+  })
+
+  // PUT /api/admin/config — salva un sottoinsieme di configurazioni.
+  // Accetta solo chiavi presenti nel manifest (whitelist): qualsiasi altra
+  // chiave nel body viene ignorata. Un campo "secret" con valore vuoto non
+  // sovrascrive quello già salvato, così non serve reinserire la password
+  // ogni volta che si cambia un altro campo dello stesso gruppo.
+  app.put('/config', adminOnly, async (req, reply) => {
+    const updates = Array.isArray(req.body) ? req.body : []
+
+    for (const { key, value } of updates) {
+      const meta = CONFIG_MANIFEST_BY_KEY[key]
+      if (!meta) continue
+      if (meta.secret && (value === '' || value === undefined || value === null)) continue
+
+      let coerced = value
+      if (meta.type === 'boolean') coerced = !!value
+      if (meta.type === 'number') coerced = Number(value)
+
+      await RuntimeConfig.findOneAndUpdate({ key }, { key, value: coerced }, { upsert: true })
+    }
+
+    await reloadRuntimeConfig()
+    return { updated: true }
   })
 }
