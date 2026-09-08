@@ -76,14 +76,13 @@ Misure già presenti nel codice:
 - Cancellazione ed esportazione dati self-service (`DELETE /api/auth/me`, `GET /api/auth/me/export`) per i diritti GDPR di cancellazione e portabilità
 - Consenso a Termini/Privacy tracciato in fase di registrazione (`acceptedTermsAt`)
 - Handler d'errore globale che non espone stack trace/dettagli interni ai client
+- **HTTPS + `api.trustProxy`**: il sito gira dietro un reverse proxy che termina TLS. `api.trustProxy` è `true` di default in `config/default.json`, così Fastify legge l'IP reale del client da `X-Forwarded-For` (rate limiting e log corretti) invece di quello del proxy, e riconosce la richiesta come HTTPS. Se in futuro il server tornasse a essere esposto direttamente (senza proxy davanti), reimposta `api.trustProxy: false` in `config/local.json`, altrimenti un client potrebbe falsificare il proprio IP con quell'header.
 
-Cosa va configurato/verificato prima del go-live:
-- **HTTPS obbligatorio**: il server Fastify non termina TLS da solo. Mettilo dietro un reverse proxy (nginx, Caddy, load balancer del provider) con certificato valido e redirect automatico da HTTP a HTTPS.
-- **`api.trustProxy`**: se il server sta dietro un reverse proxy, impostalo a `true` in `config/local.json` (o `config/prod.json`), altrimenti rate limiting e log useranno l'IP del proxy invece di quello reale del client.
+Cosa va ancora configurato/verificato prima del go-live:
 - **`jwt.secret`**: genera un segreto lungo e casuale (es. `openssl rand -hex 32`), mai quello di esempio.
 - **SMTP**: configuralo per abilitare reset password e notifiche via email (necessario per `features.passwordAuth`).
 - **Backup del database MongoDB**: pianifica backup regolari, i dati includono contenuti personali degli utenti.
-- **Testi legali**: i placeholder `[NOME/RAGIONE SOCIALE DEL TITOLARE]`, `[INDIRIZZO COMPLETO]`, `[CF/P.IVA]` ed `[EMAIL DI CONTATTO PRIVACY]` nelle pagine Privacy/Termini del client (`fishlog-client/src/views/legal/`) vanno completati con i dati reali del gestore del servizio prima della pubblicazione: sono richiesti dall'art. 13 GDPR.
+- **Dati legali**: nome/ragione sociale, indirizzo, CF/P.IVA ed email di contatto del Titolare del trattamento vanno compilati da Admin → Configurazioni → "Dati legali (Privacy/Termini)": finché restano vuoti, le pagine Privacy/Termini del client mostrano un segnaposto (richiesti dall'art. 13 GDPR).
 
 ## Futuro
 - Auth: interceptor JWT pronto in `utils/api.js` del client, campo `userId` già nello schema
