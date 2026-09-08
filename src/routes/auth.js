@@ -10,6 +10,7 @@ import Group from '../models/Group.js'
 import Friendship from '../models/Friendship.js'
 import Conversation from '../models/Conversation.js'
 import Message from '../models/Message.js'
+import Listing from '../models/Listing.js'
 import { sendMail, welcomeEmail, securityAlertEmail, passwordResetEmail, emailChangeConfirmEmail } from '../utils/mailer.js'
 
 const cfg = new AppConfig()
@@ -45,6 +46,31 @@ function passwordAuthEnabled() {
   return cfg.get('features.passwordAuth', true)
 }
 
+// Versione corrente dei Termini di Servizio / Informativa Privacy: salvata
+// sull'utente al momento dell'accettazione, così un futuro aggiornamento
+// del testo si può distinguere da chi ha accettato la versione precedente.
+const TERMS_VERSION = '2026-09-08'
+
+// I campi che finiscono in una query Mongo devono essere stringhe: senza
+// questo controllo un body come { "email": { "$ne": null } } (valido JSON)
+// passerebbe direttamente a User.findOne come operatore Mongo (NoSQL
+// injection), bypassando l'autenticazione.
+function isNonEmptyString(v) {
+  return typeof v === 'string' && v.length > 0
+}
+
+// Limite più stretto delle rotte di auth rispetto al globale: mitiga
+// credential stuffing / brute force su login e enumerazione via
+// register/forgot-password.
+const authRateLimit = {
+  config: {
+    rateLimit: {
+      max: cfg.get('security.rateLimit.auth.max', 10),
+      timeWindow: cfg.get('security.rateLimit.auth.timeWindow', '1 minute')
+    }
+  }
+}
+
 export default async function authRoutes(app) {
 
   // ── helpers ────────────────────────────────────────────────────────────
@@ -69,19 +95,27 @@ export default async function authRoutes(app) {
   app.get('/features', async () => ({ passwordAuthEnabled: passwordAuthEnabled() }))
 
   // ── register ───────────────────────────────────────────────────────────
-  app.post('/register', async (req, reply) => {
+  app.post('/register', authRateLimit, async (req, reply) => {
     if (!requirePasswordAuth(reply)) return
 
-    const { email, password, displayName } = req.body
-    if (!email || !password)
+    const { email, password, displayName, acceptTerms } = req.body
+    if (!isNonEmptyString(email) || !isNonEmptyString(password))
       return reply.status(400).send({ error: 'Email e password obbligatorie' })
-    if (password.length < 6)
-      return reply.status(400).send({ error: 'Password minimo 6 caratteri' })
+    if (password.length < 8)
+      return reply.status(400).send({ error: 'Password minimo 8 caratteri' })
+    if (acceptTerms !== true)
+      return reply.status(400).send({ error: 'Devi accettare Termini di Servizio e Informativa Privacy' })
 
-    if (await User.findOne({ email }))
+    const normalizedEmail = email.toLowerCase().trim()
+    if (await User.findOne({ email: normalizedEmail }))
       return reply.status(409).send({ error: 'Email già registrata' })
 
-    const user = new User({ email, displayName: displayName || email.split('@')[0] })
+    const user = new User({
+      email: normalizedEmail,
+      displayName: isNonEmptyString(displayName) ? displayName : normalizedEmail.split('@')[0],
+      acceptedTermsAt: new Date(),
+      acceptedTermsVersion: TERMS_VERSION
+    })
     await user.setPassword(password)
     await user.save()
 
@@ -91,12 +125,12 @@ export default async function authRoutes(app) {
   })
 
   // ── login ──────────────────────────────────────────────────────────────
-  app.post('/login', async (req, reply) => {
+  app.post('/login', authRateLimit, async (req, reply) => {
     const { email, password } = req.body
-    if (!email || !password)
+    if (!isNonEmptyString(email) || !isNonEmptyString(password))
       return reply.status(400).send({ error: 'Email e password obbligatorie' })
 
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ email: email.toLowerCase().trim() })
     if (!user || !(await user.checkPassword(password)))
       return reply.status(401).send({ error: 'Credenziali non valide' })
 
@@ -193,10 +227,10 @@ export default async function authRoutes(app) {
       return reply.status(400).send({ error: 'Account collegato solo a provider social, nessuna password da cambiare' })
 
     const { currentPassword, newPassword } = req.body
-    if (!currentPassword || !newPassword)
+    if (!isNonEmptyString(currentPassword) || !isNonEmptyString(newPassword))
       return reply.status(400).send({ error: 'Password attuale e nuova obbligatorie' })
-    if (newPassword.length < 6)
-      return reply.status(400).send({ error: 'Nuova password minimo 6 caratteri' })
+    if (newPassword.length < 8)
+      return reply.status(400).send({ error: 'Nuova password minimo 8 caratteri' })
     if (!(await user.checkPassword(currentPassword)))
       return reply.status(401).send({ error: 'Password attuale errata' })
 
@@ -209,10 +243,10 @@ export default async function authRoutes(app) {
   })
 
   // ── password dimenticata ────────────────────────────────────────────────
-  app.post('/forgot-password', async (req, reply) => {
+  app.post('/forgot-password', authRateLimit, async (req, reply) => {
     if (!requirePasswordAuth(reply)) return
     const { email } = req.body
-    if (!email) return reply.status(400).send({ error: 'Email obbligatoria' })
+    if (!isNonEmptyString(email)) return reply.status(400).send({ error: 'Email obbligatoria' })
 
     const user = await User.findOne({ email: email.toLowerCase().trim() })
     if (user && user.passwordHash) {
@@ -229,11 +263,12 @@ export default async function authRoutes(app) {
     return { sent: true }
   })
 
-  app.post('/reset-password', async (req, reply) => {
+  app.post('/reset-password', authRateLimit, async (req, reply) => {
     if (!requirePasswordAuth(reply)) return
     const { token, newPassword } = req.body
-    if (!token || !newPassword) return reply.status(400).send({ error: 'Token e nuova password obbligatori' })
-    if (newPassword.length < 6) return reply.status(400).send({ error: 'Nuova password minimo 6 caratteri' })
+    if (!isNonEmptyString(token) || !isNonEmptyString(newPassword))
+      return reply.status(400).send({ error: 'Token e nuova password obbligatori' })
+    if (newPassword.length < 8) return reply.status(400).send({ error: 'Nuova password minimo 8 caratteri' })
 
     const user = await User.findOne({
       passwordResetTokenHash: hashToken(token),
@@ -305,6 +340,38 @@ export default async function authRoutes(app) {
     }
 
     return reply.redirect(`${CLIENT_URL}/confirm-email?status=ok`)
+  })
+
+  // ── esportazione dati (diritto alla portabilità, art. 20 GDPR) ─────────
+  // Dump di tutti i dati collegati all'utente in un unico JSON scaricabile.
+  // Per le conversazioni si esportano solo i messaggi inviati dall'utente
+  // stesso (non il contenuto scritto dall'altro partecipante).
+  app.get('/me/export', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub).lean()
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    delete user.passwordHash
+    delete user.passwordResetTokenHash
+    delete user.emailChangeTokenHash
+
+    const [sessions, posts, listings, friendships, sentMessages] = await Promise.all([
+      Session.find({ userId: user._id }).lean(),
+      Post.find({ author: user._id }).lean(),
+      Listing.find({ seller: user._id }).lean(),
+      Friendship.find({ $or: [{ requester: user._id }, { recipient: user._id }] }).lean(),
+      Message.find({ sender: user._id }).select('-media').lean()
+    ])
+
+    reply.header('Content-Disposition', 'attachment; filename="fishlog-dati.json"')
+    return {
+      exportedAt: new Date().toISOString(),
+      profile: user,
+      sessions,
+      posts,
+      listings,
+      friendships,
+      sentMessages
+    }
   })
 
   // ── eliminazione account ──────────────────────────────────────────────
@@ -432,7 +499,11 @@ export default async function authRoutes(app) {
 
     const isNewUser = !user
     if (!user) {
-      user = new User({ email, displayName, avatar })
+      // Il consenso a Termini/Privacy per il login social è raccolto lato
+      // client come nota informativa accanto ai pulsanti OAuth (non c'è un
+      // form intermedio nel redirect): l'accettazione è quindi implicita
+      // nella scelta di proseguire con Google/Facebook per creare l'account.
+      user = new User({ email, displayName, avatar, acceptedTermsAt: new Date(), acceptedTermsVersion: TERMS_VERSION })
     } else {
       user.displayName = user.displayName || displayName
       user.avatar      = user.avatar || avatar

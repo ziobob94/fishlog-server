@@ -5,6 +5,8 @@ import Fastify from 'fastify'
 import jwt from '@fastify/jwt'
 import cookie from '@fastify/cookie'
 import cors from '@fastify/cors'
+import helmet from '@fastify/helmet'
+import rateLimit from '@fastify/rate-limit'
 import multipart from '@fastify/multipart'
 import staticFiles from '@fastify/static'
 import websocket from '@fastify/websocket'
@@ -35,10 +37,33 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Stream sincrono (no worker thread): il transport pino-pretty basato su
 // worker crasha sotto `node --watch` (thread-stream orfano ai riavvii).
+// trustProxy va a true in produzione quando il processo sta dietro un
+// reverse proxy (nginx, load balancer): serve per ricavare l'IP reale del
+// client (rate limiting, log) e per rilevare correttamente https.
 const app = Fastify({
+  trustProxy: cfg.get('api.trustProxy', false),
   logger: {
     stream: pretty({ colorize: true })
   }
+})
+
+// Header di sicurezza HTTP (HSTS, X-Content-Type-Options, Referrer-Policy...).
+// CSP disattivata: questo processo espone solo API JSON e file statici
+// (nessuna pagina HTML da proteggere da XSS). crossOriginResourcePolicy va
+// a "cross-origin" perché il client Vue gira su un'origin diversa e deve
+// poter caricare le immagini/i video in /uploads.
+await app.register(helmet, {
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+})
+
+// Rate limiting globale anti brute-force/DoS applicativo. Le rotte di auth
+// (login, register, reset password...) applicano un limite più stretto,
+// vedi routes/auth.js.
+await app.register(rateLimit, {
+  global: true,
+  max: cfg.get('security.rateLimit.global.max', 200),
+  timeWindow: cfg.get('security.rateLimit.global.timeWindow', '1 minute')
 })
 
 await app.register(cors, {
@@ -108,6 +133,19 @@ await app.register(notificationRoutes, { prefix: '/api/notifications' })
 await app.register(listingRoutes, { prefix: '/api/listings' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+
+// Handler globale: logga sempre lo stack completo lato server, ma verso il
+// client espone il messaggio grezzo solo per errori applicativi noti
+// (statusCode < 500). Per i 500 (bug/eccezioni impreviste) risponde con un
+// messaggio generico per non far trapelare stack trace o dettagli interni.
+app.setErrorHandler((err, req, reply) => {
+  const statusCode = err.statusCode || 500
+  req.log.error({ err }, 'request error')
+  if (statusCode >= 500) {
+    return reply.status(statusCode).send({ error: 'Errore interno del server' })
+  }
+  return reply.status(statusCode).send({ error: err.message || 'Richiesta non valida' })
+})
 
 try {
   await mongoose.connect(cfg.get('mongodb.url'))

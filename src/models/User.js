@@ -48,7 +48,12 @@ const UserSchema = new mongoose.Schema({
 
   pendingEmail:         { type: String },
   emailChangeTokenHash: { type: String },
-  emailChangeExpires:   { type: Date }
+  emailChangeExpires:   { type: Date },
+
+  // Traccia l'accettazione di Termini/Privacy in fase di registrazione
+  // (obbligo di consenso informato GDPR): data e versione del testo accettato.
+  acceptedTermsAt:     { type: Date },
+  acceptedTermsVersion: { type: String }
 
 }, { timestamps: true })
 

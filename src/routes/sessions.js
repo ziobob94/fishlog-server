@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import Session from '../models/Session.js'
 import { visibilityFilter, canEdit, canModerate } from '../utils/sessionAccess.js'
+import { escapeRegExp } from '../utils/regex.js'
 
 // Catalogo di esche note (naturali/artificiali/miste), usato come base di
 // suggerimenti finché non c'è storico personale, e per proporre il "tipo"
@@ -45,18 +46,19 @@ export default async function sessionRoutes(app) {
     const filter = await visibilityFilter(req.user)
 
     if (technique) filter.technique = technique
-    if (location)  filter['location.name'] = new RegExp(location, 'i')
+    if (location)  filter['location.name'] = new RegExp(escapeRegExp(location), 'i')
     if (dateFrom || dateTo) {
       filter.date = {}
       if (dateFrom) filter.date.$gte = new Date(dateFrom)
       if (dateTo)   filter.date.$lte = new Date(dateTo)
     }
     if (search) {
+      const re = new RegExp(escapeRegExp(search), 'i')
       filter.$or = [
-        { title: new RegExp(search, 'i') },
-        { notes: new RegExp(search, 'i') },
-        { 'location.name': new RegExp(search, 'i') },
-        { 'location.spot': new RegExp(search, 'i') }
+        { title: re },
+        { notes: re },
+        { 'location.name': re },
+        { 'location.spot': re }
       ]
     }
 
@@ -110,7 +112,9 @@ export default async function sessionRoutes(app) {
     if (existingOngoing) {
       return reply.status(409).send({ error: 'Hai già un\'uscita in corso', ongoingId: existingOngoing._id })
     }
-    const session = new Session({ ...req.body, userId: req.user.sub, status: 'ongoing' })
+    // Come in PATCH: `hidden` è un campo di sola moderazione, non va accettato dal body dell'utente.
+    const { hidden, ...body } = req.body
+    const session = new Session({ ...body, userId: req.user.sub, status: 'ongoing' })
     await session.save()
     return reply.status(201).send(session)
   })

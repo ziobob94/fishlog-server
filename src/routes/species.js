@@ -3,8 +3,7 @@ import SpeciesReport from '../models/SpeciesReport.js'
 import Session from '../models/Session.js'
 import { searchGbif, fetchGbifDetail } from '../utils/gbif.js'
 import { searchINaturalistFish } from '../utils/inaturalist.js'
-
-const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+import { escapeRegExp } from '../utils/regex.js'
 
 export default async function speciesRoutes(app) {
 
@@ -92,7 +91,7 @@ export default async function speciesRoutes(app) {
       match['location.coords.lat'] = { $gte: latNum - dLat, $lte: latNum + dLat }
       match['location.coords.lng'] = { $gte: lngNum - dLng, $lte: lngNum + dLng }
     } else if (region) {
-      match['location.region'] = new RegExp(region, 'i')
+      match['location.region'] = new RegExp(escapeRegExp(region), 'i')
     }
 
     let data = []

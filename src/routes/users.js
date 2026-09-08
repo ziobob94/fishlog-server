@@ -1,4 +1,5 @@
 import User from '../models/User.js'
+import { escapeRegExp } from '../utils/regex.js'
 
 export default async function userRoutes(app) {
 
@@ -14,9 +15,10 @@ export default async function userRoutes(app) {
     const { search } = req.query
     if (!search || search.trim().length < 2) return { data: [] }
 
+    const re = new RegExp(escapeRegExp(search.trim()), 'i')
     const users = await User.find({
       _id: { $ne: req.user.sub },
-      $or: [{ email: new RegExp(search.trim(), 'i') }, { displayName: new RegExp(search.trim(), 'i') }]
+      $or: [{ email: re }, { displayName: re }]
     }).select('displayName email avatar').limit(20).lean()
 
     return { data: users }

@@ -2,6 +2,7 @@ import Listing, { CATEGORIES } from '../models/Listing.js'
 import User from '../models/User.js'
 import { canEdit } from '../utils/listingAccess.js'
 import { searchEbay } from '../utils/ebay.js'
+import { escapeRegExp } from '../utils/regex.js'
 
 export default async function listingRoutes(app) {
 
@@ -26,16 +27,17 @@ export default async function listingRoutes(app) {
     if (category)   filter.category = category
     if (condition)  filter.condition = condition
     if (sellerType) filter.sellerType = sellerType
-    if (location)   filter['location.name'] = new RegExp(location, 'i')
+    if (location)   filter['location.name'] = new RegExp(escapeRegExp(location), 'i')
     if (priceMin || priceMax) {
       filter.price = {}
       if (priceMin) filter.price.$gte = Number(priceMin)
       if (priceMax) filter.price.$lte = Number(priceMax)
     }
     if (search) {
+      const re = new RegExp(escapeRegExp(search), 'i')
       filter.$or = [
-        { title: new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') }
+        { title: re },
+        { description: re }
       ]
     }
 
