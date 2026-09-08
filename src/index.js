@@ -28,6 +28,7 @@ import friendRoutes     from './routes/friends.js'
 import chatRoutes       from './routes/chat.js'
 import notificationRoutes from './routes/notifications.js'
 import listingRoutes    from './routes/listings.js'
+import legalRoutes       from './routes/legal.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
@@ -131,6 +132,7 @@ await app.register(friendRoutes,  { prefix: '/api/friends' })
 await app.register(chatRoutes,    { prefix: '/api/chat' })
 await app.register(notificationRoutes, { prefix: '/api/notifications' })
 await app.register(listingRoutes, { prefix: '/api/listings' })
+await app.register(legalRoutes,   { prefix: '/api/legal' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 

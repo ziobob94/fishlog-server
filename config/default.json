@@ -56,5 +56,11 @@
     },
     "features": {
         "passwordAuth": true
+    },
+    "legal": {
+        "companyName": "",
+        "address": "",
+        "taxId": "",
+        "contactEmail": ""
     }
 }
