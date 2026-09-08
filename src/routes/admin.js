@@ -4,6 +4,7 @@ import RuntimeConfig from '../models/RuntimeConfig.js'
 import AppConfig from '../config.js'
 import { reloadRuntimeConfig } from '../runtimeConfigStore.js'
 import { CONFIG_MANIFEST, CONFIG_MANIFEST_BY_KEY } from '../configManifest.js'
+import { escapeRegExp } from '../utils/regex.js'
 
 const cfg = new AppConfig()
 
@@ -16,7 +17,7 @@ export default async function adminRoutes(app) {
   app.get('/users', adminOnly, async (req) => {
     const { page = 1, limit = 30, search } = req.query
     const filter = search
-      ? { $or: [{ email: new RegExp(search, 'i') }, { displayName: new RegExp(search, 'i') }] }
+      ? { $or: [{ email: new RegExp(escapeRegExp(search), 'i') }, { displayName: new RegExp(escapeRegExp(search), 'i') }] }
       : {}
 
     const [users, total] = await Promise.all([

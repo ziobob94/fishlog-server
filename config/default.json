@@ -2,7 +2,14 @@
 
     "api": {
         "port": 3001,
-        "host": "localhost"
+        "host": "localhost",
+        "trustProxy": true
+    },
+    "security": {
+        "rateLimit": {
+            "global": { "max": 200, "timeWindow": "1 minute" },
+            "auth":   { "max": 10,  "timeWindow": "1 minute" }
+        }
     },
     "mongodb": {
         "url": "mongodb://localhost:27017/fishlog"
@@ -49,5 +56,11 @@
     },
     "features": {
         "passwordAuth": true
+    },
+    "legal": {
+        "companyName": "",
+        "address": "",
+        "taxId": "",
+        "contactEmail": ""
     }
 }
