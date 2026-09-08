@@ -9,6 +9,14 @@ import AppConfig from '../config.js'
 const cfg = new AppConfig()
 const CLIENT_URL = cfg.get('client.url')
 
+// Il documento salva solo il filename: l'URL pubblico va ricostruito ad ogni
+// lettura (come già per sessioni/annunci), altrimenti le foto restano senza
+// src lato client pur essendo state caricate correttamente.
+function withMediaUrls(post, baseUrl) {
+  if (!post.media?.length) return post
+  return { ...post, media: post.media.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) }
+}
+
 // Avvisa l'autore del post via email, se ha un'email, non è lui stesso ad
 // aver generato l'evento, e non l'ha disattivato dal profilo (Notifiche).
 // Fire-and-forget: non deve bloccare né far fallire la risposta HTTP.
@@ -91,6 +99,7 @@ export default async function postRoutes(app) {
 
     const pageNum  = parseInt(page)
     const limitNum = parseInt(limit)
+    const baseUrl  = `${req.protocol}://${req.headers.host}`
 
     const populatePost = (q) => q
       .populate('author', 'displayName avatar')
@@ -107,7 +116,7 @@ export default async function postRoutes(app) {
       const radius = radiusKm ? parseFloat(radiusKm) : null
 
       let withDistance = all
-        .map(p => ({ ...p, distanceKm: distanceKm(nearCoords, p.event?.location) }))
+        .map(p => withMediaUrls({ ...p, distanceKm: distanceKm(nearCoords, p.event?.location) }, baseUrl))
         .filter(p => p.distanceKm != null && (!radius || p.distanceKm <= radius))
 
       withDistance.sort(sort === 'date'
@@ -129,7 +138,7 @@ export default async function postRoutes(app) {
       Post.countDocuments(filter)
     ])
 
-    return { data: posts, pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
+    return { data: posts.map(p => withMediaUrls(p, baseUrl)), pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
   })
 
   // POST /api/posts — crea post/evento
@@ -171,7 +180,7 @@ export default async function postRoutes(app) {
       .populate('event.attendees.user', 'displayName avatar')
       .lean()
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
-    return post
+    return withMediaUrls(post, `${req.protocol}://${req.headers.host}`)
   })
 
   // PATCH /api/posts/:id — modifica (solo author/admin)
