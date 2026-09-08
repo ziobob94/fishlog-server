@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
+import { CATEGORIES as LISTING_CATEGORIES } from './Listing.js'
 
 const UserSchema = new mongoose.Schema({
   email:        { type: String, unique: true, sparse: true, lowercase: true, trim: true },
@@ -36,6 +37,17 @@ const UserSchema = new mongoose.Schema({
     emailComments:       { type: Boolean, default: true },
     emailLikes:          { type: Boolean, default: true },
     emailFriendRequests: { type: Boolean, default: true }
+  },
+
+  // Raccolte dal sondaggio opzionale post-registrazione (o dal profilo, in
+  // qualsiasi momento): usate per proporre un default più mirato nella
+  // ricerca eBay del market quando l'utente non imposta una ricerca propria.
+  // "surveyCompleted" passa a true sia salvando che saltando il sondaggio,
+  // così non viene riproposto ad ogni accesso.
+  marketPreferences: {
+    technique:       { type: String, enum: ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro', ''], default: '' },
+    categories:      [{ type: String, enum: LISTING_CATEGORIES }],
+    surveyCompleted: { type: Boolean, default: false }
   },
 
   // Ultima visita alla bacheca generale / alla propria, per calcolare il

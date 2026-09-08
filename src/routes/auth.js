@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { nanoid } from 'nanoid'
 import AppConfig from '../config.js'
 import User from '../models/User.js'
+import { CATEGORIES as LISTING_CATEGORIES } from '../models/Listing.js'
 import Session from '../models/Session.js'
 import Post from '../models/Post.js'
 import Group from '../models/Group.js'
@@ -192,6 +193,33 @@ export default async function authRoutes(app) {
     if (emailComments       !== undefined) user.notificationPreferences.emailComments       = !!emailComments
     if (emailLikes          !== undefined) user.notificationPreferences.emailLikes          = !!emailLikes
     if (emailFriendRequests !== undefined) user.notificationPreferences.emailFriendRequests = !!emailFriendRequests
+
+    await user.save()
+    return publicUser(user)
+  })
+
+  // ── preferenze market (sondaggio iniziale + profilo) ─────────────────
+  // Un'unica chiamata copre sia il salvataggio che lo "salta" del sondaggio:
+  // in entrambi i casi l'utente ha visto la domanda, quindi surveyCompleted
+  // passa a true e non viene più riproposta.
+  app.patch('/me/market-preferences', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const TECHNIQUES = ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro']
+    const { technique, categories } = req.body
+
+    if (technique !== undefined) {
+      if (technique && !TECHNIQUES.includes(technique))
+        return reply.status(400).send({ error: 'Tecnica non valida' })
+      user.marketPreferences.technique = technique || ''
+    }
+    if (categories !== undefined) {
+      if (!Array.isArray(categories) || categories.some(c => !LISTING_CATEGORIES.includes(c)))
+        return reply.status(400).send({ error: 'Categoria non valida' })
+      user.marketPreferences.categories = categories
+    }
+    user.marketPreferences.surveyCompleted = true
 
     await user.save()
     return publicUser(user)
@@ -530,6 +558,11 @@ export default async function authRoutes(app) {
         emailComments:       user.notificationPreferences?.emailComments       !== false,
         emailLikes:          user.notificationPreferences?.emailLikes          !== false,
         emailFriendRequests: user.notificationPreferences?.emailFriendRequests !== false
+      },
+      marketPreferences: {
+        technique:       user.marketPreferences?.technique || '',
+        categories:      user.marketPreferences?.categories || [],
+        surveyCompleted: !!user.marketPreferences?.surveyCompleted
       },
       hasPassword:       !!user.passwordHash,
       pendingEmail:      user.pendingEmail || null,

@@ -1,12 +1,59 @@
+import mongoose from 'mongoose'
 import Listing, { CATEGORIES } from '../models/Listing.js'
+import Session from '../models/Session.js'
 import User from '../models/User.js'
 import { canEdit } from '../utils/listingAccess.js'
 import { searchEbay } from '../utils/ebay.js'
 import { escapeRegExp } from '../utils/regex.js'
 
+// Tecnica di pesca più praticata → attrezzatura pertinente da cercare su
+// eBay quando l'utente non ha impostato una ricerca propria.
+const TECHNIQUE_QUERY = {
+  spinning:    'canna da spinning pesca',
+  surfcasting: 'canna da surfcasting pesca',
+  feeder:      'canna da feeder pesca',
+  bolentino:   'canna da bolentino pesca',
+  mosca:       'canna da pesca a mosca'
+}
+
+// Categoria di interesse dichiarata → termine di ricerca eBay.
+const CATEGORY_QUERY = {
+  canne:         'canna da pesca',
+  mulinelli:     'mulinello da pesca',
+  esche:         'esche da pesca',
+  ami_terminali: 'ami da pesca',
+  abbigliamento: 'abbigliamento da pesca',
+  accessori:     'accessori da pesca',
+  imbarcazioni:  'imbarcazione da pesca'
+}
+
 export default async function listingRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
+
+  // Ricerca eBay "personalizzata": priorità alle preferenze dichiarate
+  // dall'utente (sondaggio post-registrazione o profilo); in assenza di
+  // preferenze esplicite, deduce la tecnica più usata dalle sue sessioni di
+  // pesca. Senza storico (o utente anonimo) restituisce null e si ricade sul
+  // default generico di searchEbay ("attrezzatura da pesca").
+  async function personalizedQuery(userId) {
+    if (!userId) return null
+
+    const user = await User.findById(userId).select('marketPreferences').lean()
+    const prefs = user?.marketPreferences
+
+    if (prefs?.categories?.length) return CATEGORY_QUERY[prefs.categories[0]] || null
+    if (prefs?.technique) return TECHNIQUE_QUERY[prefs.technique] || null
+
+    const [top] = await Session.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(userId), technique: { $nin: [null, ''] } } },
+      { $group: { _id: '$technique', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ])
+
+    return (top && TECHNIQUE_QUERY[top._id]) || null
+  }
 
   function withMediaUrls(baseUrl, listing) {
     return { ...listing, media: (listing.media || []).map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) }
@@ -64,8 +111,18 @@ export default async function listingRoutes(app) {
   // Developer non è ancora stata registrata in config/local.json.
   app.get('/external', async (req, reply) => {
     const { search, zip, limit } = req.query
+
+    // Auth opzionale: se c'è un token valido personalizziamo la query di
+    // default, ma la ricerca esterna resta disponibile anche da anonimo.
+    let userId = null
     try {
-      const result = await searchEbay({ query: search, zip, limit: limit ? Number(limit) : undefined })
+      await req.jwtVerify()
+      userId = req.user.sub
+    } catch { /* nessun blocco: procede come ricerca anonima */ }
+
+    try {
+      const query = search || (userId ? await personalizedQuery(userId) : null)
+      const result = await searchEbay({ query, zip, limit: limit ? Number(limit) : undefined })
       return result
     } catch (err) {
       req.log.error(err, 'eBay search failed')
