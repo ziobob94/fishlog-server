@@ -33,6 +33,7 @@ import ebayNotificationRoutes from './routes/ebayNotifications.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
+import { backfillDirectConversations } from './migrations/backfillConversationType.js'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -157,6 +158,12 @@ try {
 } catch (err) {
   app.log.error({ err }, 'MongoDB connection failed')
   process.exit(1)
+}
+
+try {
+  await backfillDirectConversations(app.log)
+} catch (err) {
+  app.log.error({ err }, 'Backfill conversazioni dirette fallito')
 }
 
 // Configurazioni modificabili da admin (eBay, OAuth, SMTP, feature flag...):
