@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.1...server-v1.11.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* trim su client ID/secret eBay e messaggio d'errore più utile ([0e30057](https://github.com/ziobob94/fishlog-server/commit/0e30057cab7fc52c12c11cc4e40a69769eef4a82))
+
 ## [1.11.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.0...server-v1.11.1) (2026-09-09)
 
 
