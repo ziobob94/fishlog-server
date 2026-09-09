@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.12.0...server-v1.13.0) (2026-09-09)
+
+
+### Features
+
+* endpoint pubblico per l'elenco dei negozi verificati ([9bbd947](https://github.com/ziobob94/fishlog-server/commit/9bbd947629a72dc37c9ea1df5074dd33b5dc4ace))
+
 # [1.12.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.2...server-v1.12.0) (2026-09-09)
 
 
