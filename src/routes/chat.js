@@ -76,7 +76,11 @@ async function notifyNewChatEvent(recipientId, message, conversationType) {
 }
 
 async function findDirectConversation(userA, userB) {
-  return Conversation.findOne({ type: 'direct', participants: { $all: [userA, userB], $size: 2 } })
+  // type $ne 'group' invece di === 'direct': le conversazioni create prima
+  // dell'introduzione dei gruppi non hanno il campo type in DB (il backfill
+  // all'avvio le sistema, ma restare tolleranti qui evita di ricreare un
+  // duplicato vuoto se per qualche motivo il backfill non fosse ancora passato).
+  return Conversation.findOne({ type: { $ne: 'group' }, participants: { $all: [userA, userB], $size: 2 } })
 }
 
 function otherParticipant(conversation, userId) {
