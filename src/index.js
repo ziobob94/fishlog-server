@@ -34,6 +34,7 @@ import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
 import { backfillDirectConversations } from './migrations/backfillConversationType.js'
+import { backfillMessageReadBy } from './migrations/backfillMessageReadBy.js'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -164,6 +165,12 @@ try {
   await backfillDirectConversations(app.log)
 } catch (err) {
   app.log.error({ err }, 'Backfill conversazioni dirette fallito')
+}
+
+try {
+  await backfillMessageReadBy(app.log)
+} catch (err) {
+  app.log.error({ err }, 'Backfill readBy messaggi fallito')
 }
 
 // Configurazioni modificabili da admin (eBay, OAuth, SMTP, feature flag...):
