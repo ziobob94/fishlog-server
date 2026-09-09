@@ -124,7 +124,16 @@ export default async function listingRoutes(app) {
       return result
     } catch (err) {
       req.log.error(err, 'eBay search failed')
-      return reply.status(502).send({ configured: true, data: [], error: 'Ricerca esterna non disponibile' })
+      // Risposta 200 anche in caso di errore: lato client sembra "nessun
+      // risultato" per non allarmare l'utente. Il dettaglio dell'errore va
+      // solo agli admin (loggati con token valido), per non esporre a tutti
+      // dettagli interni (status/messaggio dell'API eBay).
+      const isAdmin = req.user?.role === 'admin'
+      return {
+        configured: true,
+        data: [],
+        error: isAdmin ? (err.message || 'Ricerca esterna non disponibile') : undefined
+      }
     }
   })
 
