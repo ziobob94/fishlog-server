@@ -1,3 +1,10 @@
+## [1.15.3](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.2...server-v1.15.3) (2026-09-09)
+
+
+### Bug Fixes
+
+* filtri e paginazione dei risultati eBay nel market ([264cdbb](https://github.com/ziobob94/fishlog-server/commit/264cdbb57b12d5937c6ee666c3bfd2389898d7f0))
+
 ## [1.15.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.1...server-v1.15.2) (2026-09-09)
 
 
