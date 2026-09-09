@@ -124,6 +124,10 @@ export default async function adminRoutes(app) {
       if (meta.secret && (value === '' || value === undefined || value === null)) continue
 
       let coerced = value
+      // Un valore incollato dall'esterno (es. client ID/secret di un
+      // portale terzo) porta facilmente uno spazio o un a-capo finale:
+      // invisibile nel campo, ma invalida credenziali altrimenti corrette.
+      if (meta.type === 'string' && typeof coerced === 'string') coerced = coerced.trim()
       if (meta.type === 'boolean') coerced = !!value
       if (meta.type === 'number') coerced = Number(value)
 

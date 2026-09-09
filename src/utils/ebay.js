@@ -8,8 +8,18 @@ function apiBase() {
     : 'https://api.ebay.com'
 }
 
+// Trim difensivo: un client ID/secret incollato dal portale eBay porta
+// facilmente uno spazio o un a-capo finale, che rende invalida la Basic Auth
+// del token endpoint senza un errore esplicito (401 generico).
+function clientId() {
+  return cfg.get('ebay.clientId', '').trim()
+}
+function clientSecret() {
+  return cfg.get('ebay.clientSecret', '').trim()
+}
+
 function isConfigured() {
-  return !!(cfg.get('ebay.clientId', '') && cfg.get('ebay.clientSecret', ''))
+  return !!(clientId() && clientSecret())
 }
 
 // Token OAuth2 client-credentials (scope "sola lettura" per il catalogo
@@ -21,9 +31,7 @@ let tokenExpiresAt = 0
 async function getAccessToken() {
   if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken
 
-  const clientId = cfg.get('ebay.clientId', '')
-  const clientSecret = cfg.get('ebay.clientSecret', '')
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+  const basic = Buffer.from(`${clientId()}:${clientSecret()}`).toString('base64')
 
   const res = await fetch(`${apiBase()}/identity/v1/oauth2/token`, {
     method: 'POST',
@@ -37,7 +45,16 @@ async function getAccessToken() {
     })
   })
 
-  if (!res.ok) throw new Error(`eBay token request failed: ${res.status}`)
+  if (!res.ok) {
+    // error_description di eBay (es. "invalid_client") è la causa più utile
+    // da mostrare in admin: quasi sempre client ID/secret sbagliati o presi
+    // dall'ambiente sbagliato (sandbox vs produzione, che hanno credenziali
+    // separate e non intercambiabili).
+    const body = await res.text().catch(() => '')
+    let detail = body
+    try { detail = JSON.parse(body).error_description || body } catch { /* corpo non JSON, tienilo com'è */ }
+    throw new Error(`eBay token request failed: ${res.status} (${apiBase()}) — ${detail}`)
+  }
 
   const data = await res.json()
   cachedToken = data.access_token
