@@ -1,3 +1,10 @@
+## [1.15.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.1...server-v1.15.2) (2026-09-09)
+
+
+### Bug Fixes
+
+* spunte di lettura sparite sui messaggi precedenti ai gruppi ([2b20eef](https://github.com/ziobob94/fishlog-server/commit/2b20eef4b2d9ab057f80ff75f3279f85e6361b98))
+
 ## [1.15.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.0...server-v1.15.1) (2026-09-09)
 
 
