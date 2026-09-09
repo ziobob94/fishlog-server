@@ -62,19 +62,40 @@ async function getAccessToken() {
   return cachedToken
 }
 
+// ID condizione dell'API Browse di eBay (buy/browse/v1) — non i valori
+// testuali della UI, quelli si usano solo nelle risposte, non nei filtri.
+const CONDITION_IDS = {
+  nuovo: ['1000', '1500', '1750', '2000', '2500'],
+  usato: ['3000', '4000', '5000', '6000', '7000']
+}
+
 // Ricerca nel catalogo pubblico eBay (marketplace Italia). eBay non offre
 // una vera ricerca "per distanza" sugli annunci generici come un portale di
 // annunci locali: il codice postale serve solo a stimare le spese/tempi di
 // consegna mostrati nei risultati, non a ordinarli per vicinanza reale.
-export async function searchEbay({ query, zip, limit = 12 }) {
+// `offset` abilita la paginazione (senza, ogni pagina richiesta
+// riproponeva gli stessi primi risultati); `condition`/`priceMin`/`priceMax`
+// replicano lato eBay gli stessi filtri del market interno.
+export async function searchEbay({ query, zip, limit = 12, offset = 0, condition, priceMin, priceMax }) {
   if (!isConfigured()) return { configured: false, data: [] }
 
   const token = await getAccessToken()
+  const cappedLimit = Math.min(limit, 50)
 
   const params = new URLSearchParams({
     q: query || 'attrezzatura da pesca',
-    limit: String(Math.min(limit, 50))
+    limit: String(cappedLimit),
+    offset: String(Math.max(offset, 0))
   })
+
+  const itemFilters = []
+  if (priceMin != null || priceMax != null) {
+    itemFilters.push(`price:[${priceMin ?? ''}..${priceMax ?? ''}]`)
+    itemFilters.push('priceCurrency:EUR')
+  }
+  const conditionIds = CONDITION_IDS[condition]
+  if (conditionIds) itemFilters.push(`conditionIds:{${conditionIds.join('|')}}`)
+  if (itemFilters.length) params.set('filter', itemFilters.join(','))
 
   const headers = {
     'Authorization': `Bearer ${token}`,
@@ -98,5 +119,6 @@ export async function searchEbay({ query, zip, limit = 12 }) {
     location: i.itemLocation ? [i.itemLocation.city, i.itemLocation.postalCode].filter(Boolean).join(' ') : null
   }))
 
-  return { configured: true, data: items }
+  const total = data.total ?? items.length
+  return { configured: true, data: items, total, hasMore: offset + items.length < total }
 }

@@ -110,7 +110,7 @@ export default async function listingRoutes(app) {
   // annunci simili da eBay (marketplace IT). "configured:false" se l'app eBay
   // Developer non è ancora stata registrata in config/local.json.
   app.get('/external', async (req, reply) => {
-    const { search, zip, limit } = req.query
+    const { search, zip, limit, page, category, condition, priceMin, priceMax } = req.query
 
     // Auth opzionale: se c'è un token valido personalizziamo la query di
     // default, ma la ricerca esterna resta disponibile anche da anonimo.
@@ -121,8 +121,17 @@ export default async function listingRoutes(app) {
     } catch { /* nessun blocco: procede come ricerca anonima */ }
 
     try {
-      const query = search || (userId ? await personalizedQuery(userId) : null)
-      const result = await searchEbay({ query, zip, limit: limit ? Number(limit) : undefined })
+      // Stessa priorità della ricerca interna: testo libero prima, poi la
+      // categoria selezionata (tradotta nel termine eBay corrispondente),
+      // solo in assenza di entrambe si ricade sulla query personalizzata.
+      const query = search || (category && CATEGORY_QUERY[category]) || (userId ? await personalizedQuery(userId) : null)
+      const lim = limit ? Number(limit) : 12
+      const offset = page ? (Number(page) - 1) * lim : 0
+      const result = await searchEbay({
+        query, zip, limit: lim, offset, condition,
+        priceMin: priceMin ? Number(priceMin) : undefined,
+        priceMax: priceMax ? Number(priceMax) : undefined
+      })
       return result
     } catch (err) {
       req.log.error(err, 'eBay search failed')
