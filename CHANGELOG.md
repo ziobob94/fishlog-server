@@ -1,3 +1,11 @@
+# [1.11.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.10.0...server-v1.11.0) (2026-09-08)
+
+
+### Features
+
+* personalizza la ricerca eBay del market in base alla tecnica di pesca ([699abef](https://github.com/ziobob94/fishlog-server/commit/699abefebec78afe2cd87c4e36b63a1f8eb6a45f))
+* preferenze market esplicite (sondaggio + profilo) ([6f822a8](https://github.com/ziobob94/fishlog-server/commit/6f822a871d55fc80f206d08d8e449ccb6c73e390))
+
 # [1.10.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.9.0...server-v1.10.0) (2026-09-07)
 
 
