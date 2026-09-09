@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.13.0...server-v1.14.0) (2026-09-09)
+
+
+### Features
+
+* conversazioni preferite (personali, per la nuova tab del client) ([7678c55](https://github.com/ziobob94/fishlog-server/commit/7678c55c647f74b1337686d860aba745da6f1461))
+
 # [1.13.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.12.0...server-v1.13.0) (2026-09-09)
 
 
