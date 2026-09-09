@@ -1,3 +1,10 @@
+## [1.15.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.0...server-v1.15.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* chat dirette duplicate dopo l'introduzione dei gruppi ([766d455](https://github.com/ziobob94/fishlog-server/commit/766d4557babbf3c73d2fb4eafd257ac6d1da7a42))
+
 # [1.15.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.14.0...server-v1.15.0) (2026-09-09)
 
 
