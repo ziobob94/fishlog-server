@@ -127,7 +127,8 @@ export default async function chatRoutes(app) {
         Message.findOne({ conversation: c._id }).sort({ createdAt: -1 }).lean(),
         Message.countDocuments({ conversation: c._id, sender: { $ne: userId }, readAt: null })
       ])
-      return { _id: c._id, user: other, lastMessage, unreadCount, lastMessageAt: c.lastMessageAt }
+      const favorite = (c.favoritedBy || []).some(id => id.toString() === userId)
+      return { _id: c._id, user: other, lastMessage, unreadCount, lastMessageAt: c.lastMessageAt, favorite }
     }))
 
     return { data }
@@ -312,5 +313,24 @@ export default async function chatRoutes(app) {
     }
 
     return { ok: true }
+  })
+
+  // PATCH /api/chat/:conversationId/favorite — preferito personale: non è
+  // uno stato condiviso, ognuno dei due partecipanti ha i suoi.
+  app.patch('/:conversationId/favorite', auth, async (req, reply) => {
+    const conversation = await Conversation.findById(req.params.conversationId)
+    if (!conversation) return reply.status(404).send({ error: 'Conversazione non trovata' })
+    if (!conversation.participants.some(p => p.toString() === req.user.sub))
+      return reply.status(403).send({ error: 'Permesso negato' })
+
+    const userId = req.user.sub
+    const favorite = !!req.body.favorite
+    const already = conversation.favoritedBy.some(id => id.toString() === userId)
+
+    if (favorite && !already) conversation.favoritedBy.push(userId)
+    if (!favorite && already) conversation.favoritedBy = conversation.favoritedBy.filter(id => id.toString() !== userId)
+
+    await conversation.save()
+    return { favorite }
   })
 }
