@@ -1,3 +1,11 @@
+# [1.15.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.14.0...server-v1.15.0) (2026-09-09)
+
+
+### Features
+
+* chat di gruppo (server) ([68afc12](https://github.com/ziobob94/fishlog-server/commit/68afc124b163c3a5f0afca769cda13cb54056a92))
+* link diretto ai gruppi nelle notifiche di chat ([cef240b](https://github.com/ziobob94/fishlog-server/commit/cef240b7fd082765df95250cfb0943f3810c12f0))
+
 # [1.14.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.13.0...server-v1.14.0) (2026-09-09)
 
 
