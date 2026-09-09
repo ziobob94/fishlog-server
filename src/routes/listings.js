@@ -147,6 +147,43 @@ export default async function listingRoutes(app) {
     return { data: listings.map(l => withMediaUrls(baseUrl, l)) }
   })
 
+  // GET /api/listings/shops — elenco pubblico dei negozi verificati (tab
+  // "Negozi" del market). Solo verified: quelli in attesa/rifiutati restano
+  // raggiungibili solo dal link diretto della propria vetrina, non da qui.
+  app.get('/shops', async (req) => {
+    const { page = 1, limit = 20, search } = req.query
+
+    const filter = { 'shop.enabled': true, 'shop.verificationStatus': 'verified' }
+    if (search) {
+      const re = new RegExp(escapeRegExp(search), 'i')
+      filter.$or = [{ 'shop.name': re }, { displayName: re }]
+    }
+
+    const skip = (Number(page) - 1) * Number(limit)
+    const [shops, total] = await Promise.all([
+      User.find(filter).select('displayName avatar shop')
+        .sort({ 'shop.verifiedAt': -1 }).skip(skip).limit(Number(limit)).lean(),
+      User.countDocuments(filter)
+    ])
+
+    const counts = await Listing.aggregate([
+      { $match: { seller: { $in: shops.map(s => s._id) }, status: 'active' } },
+      { $group: { _id: '$seller', count: { $sum: 1 } } }
+    ])
+    const countBySeller = Object.fromEntries(counts.map(c => [c._id.toString(), c.count]))
+
+    return {
+      data: shops.map(s => ({
+        _id: s._id,
+        displayName: s.displayName,
+        avatar: s.avatar,
+        shop: { name: s.shop.name, description: s.shop.description },
+        activeListings: countBySeller[s._id.toString()] || 0
+      })),
+      pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / limit) }
+    }
+  })
+
   // GET /api/listings/shop/:userId — vetrina pubblica di un negozio
   app.get('/shop/:userId', async (req, reply) => {
     const user = await User.findById(req.params.userId).select('displayName avatar shop').lean()
