@@ -8,6 +8,11 @@ export const CONFIG_MANIFEST = [
   { key: 'ebay.clientId',     group: 'eBay',            label: 'Client ID',     type: 'string',  secret: false },
   { key: 'ebay.clientSecret', group: 'eBay',            label: 'Client Secret', type: 'string',  secret: true },
   { key: 'ebay.sandbox',      group: 'eBay',            label: 'Modalità sandbox', type: 'boolean', secret: false },
+  // Deve combaciare esattamente con il "Verification Token" impostato nella
+  // configurazione "Marketplace Account Deletion" del Developer Portal eBay
+  // (richiesto da eBay per attivare il keyset di produzione). Non "secret":
+  // va ricopiato nel portale eBay, quindi deve restare leggibile da qui.
+  { key: 'ebay.verificationToken', group: 'eBay', label: 'Verification Token (Marketplace Account Deletion)', type: 'string', secret: false },
 
   { key: 'oauth.google.clientId',     group: 'Google OAuth', label: 'Client ID',     type: 'string',  secret: false },
   { key: 'oauth.google.clientSecret', group: 'Google OAuth', label: 'Client Secret', type: 'string',  secret: true },
