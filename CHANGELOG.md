@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.0...server-v1.11.1) (2026-09-09)
+
+
+### Bug Fixes
+
+* distingui errore reale da zero risultati nella ricerca eBay del market ([d80b859](https://github.com/ziobob94/fishlog-server/commit/d80b859bf0bd3d90975f0ed77f721aec3112570e))
+
 # [1.11.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.10.0...server-v1.11.0) (2026-09-08)
 
 
