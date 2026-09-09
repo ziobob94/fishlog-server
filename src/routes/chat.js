@@ -62,12 +62,12 @@ async function unreadCountFor(userId) {
 
 // Persiste una notifica "nuovo messaggio" e spinge in realtime il conteggio
 // non letti aggiornato, così il badge si aggiorna senza ricaricare la lista.
-async function notifyNewChatEvent(recipientId, message) {
+async function notifyNewChatEvent(recipientId, message, conversationType) {
   const notification = await new Notification({
     recipient: recipientId,
     type: 'chat_message',
     actor: message.sender._id ?? message.sender,
-    data: { conversationId: message.conversation }
+    data: { conversationId: message.conversation, conversationType }
   }).save()
   sendToUser(recipientId, { type: 'notification', payload: notification })
 
@@ -103,7 +103,7 @@ async function sendMessageToConversation(app, conversation, senderId, fields, re
 
   for (const recipientId of otherParticipantIds(conversation, senderId)) {
     notifyNewMessage(message, recipientId).catch(err => app.log.error(err, 'Invio email nuovo messaggio fallito'))
-    notifyNewChatEvent(recipientId, message).catch(err => app.log.error(err, 'Creazione notifica nuovo messaggio fallita'))
+    notifyNewChatEvent(recipientId, message, conversation.type).catch(err => app.log.error(err, 'Creazione notifica nuovo messaggio fallita'))
   }
 
   return withMediaUrl(message.toObject(), req)
@@ -164,7 +164,8 @@ export default async function chatRoutes(app) {
 
     const data = await Promise.all(conversations.map(async (c) => {
       const [lastMessage, unreadCount] = await Promise.all([
-        Message.findOne({ conversation: c._id }).sort({ createdAt: -1 }).lean(),
+        // Popolato con il mittente: nei gruppi la preview mostra "Nome: testo".
+        Message.findOne({ conversation: c._id }).sort({ createdAt: -1 }).populate('sender', 'displayName email').lean(),
         Message.countDocuments({ conversation: c._id, sender: { $ne: userId }, readBy: { $ne: userId } })
       ])
       return { ...summarizeConversation(c, userId), lastMessage, unreadCount }
