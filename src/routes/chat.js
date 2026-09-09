@@ -49,12 +49,14 @@ async function areFriends(userA, userB) {
   return !!row
 }
 
+// Non letti su tutte le conversazioni (dirette e di gruppo): un messaggio
+// conta finché il mio id non compare nel suo readBy.
 async function unreadCountFor(userId) {
   const conversations = await Conversation.find({ participants: userId }).select('_id').lean()
   return Message.countDocuments({
     conversation: { $in: conversations.map(c => c._id) },
     sender: { $ne: userId },
-    readAt: null
+    readBy: { $ne: userId }
   })
 }
 
@@ -73,23 +75,36 @@ async function notifyNewChatEvent(recipientId, message) {
   sendToUser(recipientId, { type: 'chat:unread', conversationId: message.conversation, count })
 }
 
-async function findConversation(userA, userB) {
-  return Conversation.findOne({ participants: { $all: [userA, userB], $size: 2 } })
+async function findDirectConversation(userA, userB) {
+  return Conversation.findOne({ type: 'direct', participants: { $all: [userA, userB], $size: 2 } })
 }
 
 function otherParticipant(conversation, userId) {
-  return conversation.participants.find(p => p._id.toString() !== userId)
+  return conversation.participants.find(p => (p._id || p).toString() !== userId)
 }
 
-// Comune a testo/media/posizione: aggiorna la conversazione, notifica il
-// destinatario (email + realtime) e restituisce il messaggio pronto per la risposta HTTP.
-async function finalizeMessage(app, conversation, message, otherId, req) {
+// Ogni altro partecipante, non solo "l'altro" come nelle dirette: usata per
+// il fan-out di notifiche/email ed è l'unico punto che davvero distingue
+// diretta da gruppo nell'invio di un messaggio.
+function otherParticipantIds(conversation, senderId) {
+  return conversation.participants
+    .map(p => (p._id || p).toString())
+    .filter(id => id !== senderId)
+}
+
+// Comune a testo/media/posizione: salva il messaggio, aggiorna la
+// conversazione e notifica (email + realtime) ogni altro partecipante,
+// diretta o di gruppo che sia.
+async function sendMessageToConversation(app, conversation, senderId, fields, req) {
+  const message = await new Message({ conversation: conversation._id, sender: senderId, ...fields }).save()
   conversation.lastMessageAt = message.createdAt
   await conversation.save()
   await message.populate('sender', PUBLIC_FIELDS)
 
-  notifyNewMessage(message, otherId).catch(err => app.log.error(err, 'Invio email nuovo messaggio fallito'))
-  notifyNewChatEvent(otherId, message).catch(err => app.log.error(err, 'Creazione notifica nuovo messaggio fallita'))
+  for (const recipientId of otherParticipantIds(conversation, senderId)) {
+    notifyNewMessage(message, recipientId).catch(err => app.log.error(err, 'Invio email nuovo messaggio fallito'))
+    notifyNewChatEvent(recipientId, message).catch(err => app.log.error(err, 'Creazione notifica nuovo messaggio fallita'))
+  }
 
   return withMediaUrl(message.toObject(), req)
 }
@@ -108,12 +123,38 @@ async function notifyNewMessage(message, recipientId) {
   })
 }
 
+function summarizeConversation(c, userId) {
+  const favorite = (c.favoritedBy || []).some(id => id.toString() === userId)
+  const base = { _id: c._id, type: c.type, lastMessageAt: c.lastMessageAt, favorite }
+
+  if (c.type === 'group') {
+    return {
+      ...base,
+      name: c.name,
+      owner: c.owner,
+      members: c.participants,
+      isOwner: c.owner?.toString() === userId
+    }
+  }
+  return { ...base, user: otherParticipant(c, userId) }
+}
+
 export default async function chatRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
 
-  // GET /api/chat/conversations — le mie conversazioni, con l'altro utente,
-  // l'ultimo messaggio e il conteggio dei non letti
+  // Verifica di appartenenza comune a tutte le route sotto :conversationId.
+  async function loadMyConversation(req, reply) {
+    const conversation = await Conversation.findById(req.params.conversationId)
+    if (!conversation) { reply.status(404).send({ error: 'Conversazione non trovata' }); return null }
+    if (!conversation.participants.some(p => p.toString() === req.user.sub)) {
+      reply.status(403).send({ error: 'Permesso negato' }); return null
+    }
+    return conversation
+  }
+
+  // GET /api/chat/conversations — le mie conversazioni (dirette e di
+  // gruppo), con l'ultimo messaggio e il conteggio dei non letti
   app.get('/conversations', auth, async (req) => {
     const userId = req.user.sub
     const conversations = await Conversation.find({ participants: userId })
@@ -122,13 +163,11 @@ export default async function chatRoutes(app) {
       .lean()
 
     const data = await Promise.all(conversations.map(async (c) => {
-      const other = otherParticipant(c, userId)
       const [lastMessage, unreadCount] = await Promise.all([
         Message.findOne({ conversation: c._id }).sort({ createdAt: -1 }).lean(),
-        Message.countDocuments({ conversation: c._id, sender: { $ne: userId }, readAt: null })
+        Message.countDocuments({ conversation: c._id, sender: { $ne: userId }, readBy: { $ne: userId } })
       ])
-      const favorite = (c.favoritedBy || []).some(id => id.toString() === userId)
-      return { _id: c._id, user: other, lastMessage, unreadCount, lastMessageAt: c.lastMessageAt, favorite }
+      return { ...summarizeConversation(c, userId), lastMessage, unreadCount }
     }))
 
     return { data }
@@ -140,25 +179,108 @@ export default async function chatRoutes(app) {
     return { count }
   })
 
-  // GET /api/chat/with/:userId — conversazione con un amico (creata al volo se non esiste)
+  // GET /api/chat/with/:userId — conversazione diretta con un amico (creata al volo se non esiste)
   app.get('/with/:userId', auth, async (req, reply) => {
     const userId = req.user.sub
     const otherId = req.params.userId
     if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
     if (!await areFriends(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici' })
 
-    let conversation = await findConversation(userId, otherId)
-    if (!conversation) conversation = await new Conversation({ participants: [userId, otherId] }).save()
+    let conversation = await findDirectConversation(userId, otherId)
+    if (!conversation) conversation = await new Conversation({ type: 'direct', participants: [userId, otherId] }).save()
 
     return { _id: conversation._id }
   })
 
+  // GET /api/chat/:conversationId — dettaglio (serve soprattutto per l'header di un gruppo)
+  app.get('/:conversationId', auth, async (req, reply) => {
+    const conversation = await Conversation.findById(req.params.conversationId).populate('participants', PUBLIC_FIELDS).lean()
+    if (!conversation) return reply.status(404).send({ error: 'Conversazione non trovata' })
+    if (!conversation.participants.some(p => p._id.toString() === req.user.sub))
+      return reply.status(403).send({ error: 'Permesso negato' })
+
+    return summarizeConversation(conversation, req.user.sub)
+  })
+
+  // POST /api/chat/groups — crea un gruppo (minimo 3 partecipanti in tutto:
+  // io più almeno due amici, altrimenti è solo una chat diretta)
+  app.post('/groups', auth, async (req, reply) => {
+    const userId = req.user.sub
+    const name = req.body.name?.trim()
+    const participantIds = [...new Set((req.body.participantIds || []).map(String))].filter(id => id !== userId)
+
+    if (!name) return reply.status(400).send({ error: 'Nome del gruppo obbligatorio' })
+    if (participantIds.length < 2) return reply.status(400).send({ error: 'Servono almeno due amici da aggiungere' })
+
+    for (const id of participantIds) {
+      if (!await areFriends(userId, id)) return reply.status(403).send({ error: 'Puoi aggiungere solo tuoi amici' })
+    }
+
+    const conversation = await new Conversation({
+      type: 'group', name, owner: userId, participants: [userId, ...participantIds]
+    }).save()
+
+    return reply.status(201).send({ _id: conversation._id })
+  })
+
+  // PATCH /api/chat/groups/:conversationId — rinomina (solo il proprietario)
+  app.patch('/groups/:conversationId', auth, async (req, reply) => {
+    const conversation = await Conversation.findById(req.params.conversationId)
+    if (!conversation || conversation.type !== 'group') return reply.status(404).send({ error: 'Gruppo non trovato' })
+    if (conversation.owner.toString() !== req.user.sub) return reply.status(403).send({ error: 'Solo il proprietario può modificare il gruppo' })
+
+    const name = req.body.name?.trim()
+    if (!name) return reply.status(400).send({ error: 'Nome del gruppo obbligatorio' })
+
+    conversation.name = name
+    await conversation.save()
+    return { name: conversation.name }
+  })
+
+  // POST /api/chat/groups/:conversationId/members — aggiungi membri (solo il proprietario, solo amici)
+  app.post('/groups/:conversationId/members', auth, async (req, reply) => {
+    const conversation = await Conversation.findById(req.params.conversationId)
+    if (!conversation || conversation.type !== 'group') return reply.status(404).send({ error: 'Gruppo non trovato' })
+    if (conversation.owner.toString() !== req.user.sub) return reply.status(403).send({ error: 'Solo il proprietario può aggiungere membri' })
+
+    const existing = new Set(conversation.participants.map(p => p.toString()))
+    const toAdd = [...new Set((req.body.userIds || []).map(String))].filter(id => !existing.has(id))
+
+    for (const id of toAdd) {
+      if (!await areFriends(req.user.sub, id)) return reply.status(403).send({ error: 'Puoi aggiungere solo tuoi amici' })
+    }
+
+    conversation.participants.push(...toAdd)
+    await conversation.save()
+    return { participants: conversation.participants }
+  })
+
+  // DELETE /api/chat/groups/:conversationId/members/:userId — rimuovi un membro
+  // (il proprietario rimuove chiunque; chiunque può rimuovere se stesso per uscire)
+  app.delete('/groups/:conversationId/members/:userId', auth, async (req, reply) => {
+    const conversation = await Conversation.findById(req.params.conversationId)
+    if (!conversation || conversation.type !== 'group') return reply.status(404).send({ error: 'Gruppo non trovato' })
+
+    const isOwner = conversation.owner.toString() === req.user.sub
+    const isSelf = req.params.userId === req.user.sub
+    if (!isOwner && !isSelf) return reply.status(403).send({ error: 'Permesso negato' })
+
+    conversation.participants = conversation.participants.filter(p => p.toString() !== req.params.userId)
+
+    // Il proprietario che esce passa il ruolo al membro rimasto da più tempo,
+    // così il gruppo non resta senza nessuno che possa gestirlo.
+    if (conversation.owner.toString() === req.params.userId && conversation.participants.length) {
+      conversation.owner = conversation.participants[0]
+    }
+
+    await conversation.save()
+    return { participants: conversation.participants, owner: conversation.owner }
+  })
+
   // GET /api/chat/:conversationId/messages — cronologia (solo partecipanti)
   app.get('/:conversationId/messages', auth, async (req, reply) => {
-    const conversation = await Conversation.findById(req.params.conversationId)
-    if (!conversation) return reply.status(404).send({ error: 'Conversazione non trovata' })
-    if (!conversation.participants.some(p => p.toString() === req.user.sub))
-      return reply.status(403).send({ error: 'Permesso negato' })
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     const messages = await Message.find({ conversation: conversation._id })
       .sort({ createdAt: 1 })
@@ -168,31 +290,22 @@ export default async function chatRoutes(app) {
     return { data: messages.map(m => withMediaUrl(m, req)) }
   })
 
-  // POST /api/chat/with/:userId/messages — invia un messaggio (crea la conversazione se serve)
-  app.post('/with/:userId/messages', auth, async (req, reply) => {
-    const userId = req.user.sub
-    const otherId = req.params.userId
-    if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
-    if (!await areFriends(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici' })
+  // POST /api/chat/:conversationId/messages — invia un messaggio di testo
+  app.post('/:conversationId/messages', auth, async (req, reply) => {
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     const { body } = req.body
     if (!body?.trim()) return reply.status(400).send({ error: 'Messaggio obbligatorio' })
 
-    let conversation = await findConversation(userId, otherId)
-    if (!conversation) conversation = await new Conversation({ participants: [userId, otherId] }).save()
-
-    const message = await new Message({ conversation: conversation._id, sender: userId, body: body.trim() }).save()
-    const result = await finalizeMessage(app, conversation, message, otherId, req)
-
+    const result = await sendMessageToConversation(app, conversation, req.user.sub, { body: body.trim() }, req)
     return reply.status(201).send(result)
   })
 
-  // POST /api/chat/with/:userId/messages/media — foto, video, file, vocali
-  app.post('/with/:userId/messages/media', auth, async (req, reply) => {
-    const userId = req.user.sub
-    const otherId = req.params.userId
-    if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
-    if (!await areFriends(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici' })
+  // POST /api/chat/:conversationId/messages/media — foto, video, file, vocali
+  app.post('/:conversationId/messages/media', auth, async (req, reply) => {
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     await fs.mkdir(uploadsDir(), { recursive: true })
 
@@ -213,31 +326,19 @@ export default async function chatRoutes(app) {
       : uploadedFile.mimetype.startsWith('audio/') ? 'audio'
       : 'file'
 
-    let conversation = await findConversation(userId, otherId)
-    if (!conversation) conversation = await new Conversation({ participants: [userId, otherId] }).save()
-
-    const message = await new Message({ conversation: conversation._id, sender: userId, type, media: uploadedFile }).save()
-    const result = await finalizeMessage(app, conversation, message, otherId, req)
-
+    const result = await sendMessageToConversation(app, conversation, req.user.sub, { type, media: uploadedFile }, req)
     return reply.status(201).send(result)
   })
 
-  // POST /api/chat/with/:userId/messages/location — condivisione posizione attuale
-  app.post('/with/:userId/messages/location', auth, async (req, reply) => {
-    const userId = req.user.sub
-    const otherId = req.params.userId
-    if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
-    if (!await areFriends(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici' })
+  // POST /api/chat/:conversationId/messages/location — condivisione posizione attuale
+  app.post('/:conversationId/messages/location', auth, async (req, reply) => {
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     const { lat, lng, name } = req.body
     if (typeof lat !== 'number' || typeof lng !== 'number') return reply.status(400).send({ error: 'Coordinate obbligatorie' })
 
-    let conversation = await findConversation(userId, otherId)
-    if (!conversation) conversation = await new Conversation({ participants: [userId, otherId] }).save()
-
-    const message = await new Message({ conversation: conversation._id, sender: userId, type: 'location', location: { lat, lng, name } }).save()
-    const result = await finalizeMessage(app, conversation, message, otherId, req)
-
+    const result = await sendMessageToConversation(app, conversation, req.user.sub, { type: 'location', location: { lat, lng, name } }, req)
     return reply.status(201).send(result)
   })
 
@@ -258,13 +359,14 @@ export default async function chatRoutes(app) {
     await message.populate('sender', PUBLIC_FIELDS)
 
     const conversation = await Conversation.findById(message.conversation)
-    const otherId = conversation.participants.find(p => p.toString() !== req.user.sub)?.toString()
-    if (otherId) sendToUser(otherId, { type: 'chat:message-updated', conversationId: message.conversation, message })
+    for (const recipientId of otherParticipantIds(conversation, req.user.sub)) {
+      sendToUser(recipientId, { type: 'chat:message-updated', conversationId: message.conversation, message })
+    }
 
     return withMediaUrl(message.toObject(), req)
   })
 
-  // DELETE /api/chat/messages/:messageId — elimina (per entrambi) un proprio messaggio
+  // DELETE /api/chat/messages/:messageId — elimina (per tutti) un proprio messaggio
   app.delete('/messages/:messageId', auth, async (req, reply) => {
     const message = await Message.findById(req.params.messageId)
     if (!message) return reply.status(404).send({ error: 'Messaggio non trovato' })
@@ -281,22 +383,21 @@ export default async function chatRoutes(app) {
     await message.save()
 
     const conversation = await Conversation.findById(message.conversation)
-    const otherId = conversation.participants.find(p => p.toString() !== req.user.sub)?.toString()
-    if (otherId) sendToUser(otherId, { type: 'chat:message-deleted', conversationId: message.conversation, messageId: message._id })
+    for (const recipientId of otherParticipantIds(conversation, req.user.sub)) {
+      sendToUser(recipientId, { type: 'chat:message-deleted', conversationId: message.conversation, messageId: message._id })
+    }
 
     return { deleted: true }
   })
 
   // POST /api/chat/:conversationId/read — segna come lette le mie ricevute in questa conversazione
   app.post('/:conversationId/read', auth, async (req, reply) => {
-    const conversation = await Conversation.findById(req.params.conversationId)
-    if (!conversation) return reply.status(404).send({ error: 'Conversazione non trovata' })
-    if (!conversation.participants.some(p => p.toString() === req.user.sub))
-      return reply.status(403).send({ error: 'Permesso negato' })
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     await Message.updateMany(
-      { conversation: conversation._id, sender: { $ne: req.user.sub }, readAt: null },
-      { readAt: new Date() }
+      { conversation: conversation._id, sender: { $ne: req.user.sub }, readBy: { $ne: req.user.sub } },
+      { $addToSet: { readBy: req.user.sub } }
     )
 
     // Aprire la chat equivale a leggerne i messaggi: le notifiche "nuovo
@@ -316,12 +417,10 @@ export default async function chatRoutes(app) {
   })
 
   // PATCH /api/chat/:conversationId/favorite — preferito personale: non è
-  // uno stato condiviso, ognuno dei due partecipanti ha i suoi.
+  // uno stato condiviso, ognuno dei partecipanti ha i suoi.
   app.patch('/:conversationId/favorite', auth, async (req, reply) => {
-    const conversation = await Conversation.findById(req.params.conversationId)
-    if (!conversation) return reply.status(404).send({ error: 'Conversazione non trovata' })
-    if (!conversation.participants.some(p => p.toString() === req.user.sub))
-      return reply.status(403).send({ error: 'Permesso negato' })
+    const conversation = await loadMyConversation(req, reply)
+    if (!conversation) return
 
     const userId = req.user.sub
     const favorite = !!req.body.favorite
