@@ -18,9 +18,11 @@ const MessageSchema = new mongoose.Schema({
     lng:  Number,
     name: String
   },
-  // Solo chat 1:1: basta un unico readAt (il destinatario è sempre l'altro
-  // partecipante) invece di un array di letture per utente.
-  readAt:       { type: Date, default: null },
+  // Un utente per lettura: nelle chat dirette ne conterrà al più uno (il
+  // destinatario), in un gruppo uno per ogni membro che l'ha letto — stesso
+  // campo per entrambi i tipi di conversazione, invece del vecchio readAt
+  // singolo (valido solo finché il destinatario era sempre uno solo).
+  readBy:       [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   editedAt:     { type: Date, default: null },
   deleted:      { type: Boolean, default: false }
 }, { timestamps: true })

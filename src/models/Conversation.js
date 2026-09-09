@@ -1,12 +1,19 @@
 import mongoose from 'mongoose'
 
-// Solo chat 1:1 per ora: due partecipanti, sempre gli stessi due utenti
-// per un'unica conversazione (niente gruppi di chat).
+// "direct": sempre esattamente due partecipanti, creata al volo alla prima
+// chat tra due amici. "group": tre o più, con un nome e un proprietario che
+// gestisce i membri.
 const ConversationSchema = new mongoose.Schema({
+  type:          { type: String, enum: ['direct', 'group'], default: 'direct' },
   participants:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
   lastMessageAt: { type: Date, default: Date.now },
-  // Preferito personale: chi dei due partecipanti l'ha segnata, non è uno
-  // stato condiviso (l'altro può non averla tra i preferiti).
+
+  // Solo per i gruppi:
+  name:  { type: String, trim: true },
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  // Preferito personale: chi tra i partecipanti l'ha segnata, non è uno
+  // stato condiviso (gli altri possono non averla tra i preferiti).
   favoritedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 }, { timestamps: true })
 
