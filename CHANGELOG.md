@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.2...server-v1.12.0) (2026-09-09)
+
+
+### Features
+
+* endpoint di notifica "Marketplace Account Deletion" per eBay ([9f79aeb](https://github.com/ziobob94/fishlog-server/commit/9f79aeb5190eec611995aff00a29409eda6a21d9))
+
 ## [1.11.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.11.1...server-v1.11.2) (2026-09-09)
 
 
