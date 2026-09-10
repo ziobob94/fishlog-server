@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.3...server-v1.16.0) (2026-09-10)
+
+
+### Features
+
+* market in 3 tab distinte (Annunci / Negozi / eBay) ([ba856e7](https://github.com/ziobob94/fishlog-server/commit/ba856e7b26e6e862d2c9a9cff4cec37cd52c334c))
+
 ## [1.15.3](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.2...server-v1.15.3) (2026-09-09)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "fishlog-server",
-  "version": "1.15.3",
+  "version": "1.16.0",
   "type": "module",
   "scripts": {
     "dev": "cross-env NODE_ENV=development && node --watch src/index.js",
