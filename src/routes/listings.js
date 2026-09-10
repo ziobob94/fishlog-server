@@ -62,18 +62,20 @@ export default async function listingRoutes(app) {
   // GET /api/listings/categories — per popolare il filtro categoria lato client
   app.get('/categories', async () => ({ data: CATEGORIES }))
 
-  // GET /api/listings — ricerca pubblica con filtri
+  // GET /api/listings — ricerca pubblica con filtri, tab "Annunci" del
+  // market: solo venditori privati. Gli annunci di un negozio si sfogliano
+  // dalla sua vetrina (/listings/shop/:userId, tab "Negozi"), non qui, per
+  // non duplicarli in due sezioni diverse.
   app.get('/', async (req) => {
     const {
-      page = 1, limit = 20, search, category, condition, sellerType,
+      page = 1, limit = 20, search, category, condition,
       location, priceMin, priceMax
     } = req.query
 
-    const filter = { status: 'active' }
+    const filter = { status: 'active', sellerType: 'privato' }
 
     if (category)   filter.category = category
     if (condition)  filter.condition = condition
-    if (sellerType) filter.sellerType = sellerType
     if (location)   filter['location.name'] = new RegExp(escapeRegExp(location), 'i')
     if (priceMin || priceMax) {
       filter.price = {}
@@ -106,9 +108,10 @@ export default async function listingRoutes(app) {
     }
   })
 
-  // GET /api/listings/external — fallback quando il market interno è vuoto/scarso:
-  // annunci simili da eBay (marketplace IT). "configured:false" se l'app eBay
-  // Developer non è ancora stata registrata in config/local.json.
+  // GET /api/listings/external — tab "eBay & altre piattaforme" del market:
+  // annunci dal marketplace IT di eBay (in futuro altre fonti esterne, da qui
+  // il nome generico). "configured:false" se l'app eBay Developer non è
+  // ancora stata registrata in config/local.json.
   app.get('/external', async (req, reply) => {
     const { search, zip, limit, page, category, condition, priceMin, priceMax } = req.query
 
