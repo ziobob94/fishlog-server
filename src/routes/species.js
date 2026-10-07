@@ -114,6 +114,56 @@ export default async function speciesRoutes(app) {
     return { data }
   })
 
+  // GET /api/species/name/:name — scheda specie pubblica: dati del catalogo
+  // più calendario mensile ed esche/tecniche più usate, calcolati dalle
+  // catture reali della community (non da stime editoriali). Si cerca per
+  // nome e non per _id perché catches.species è testo libero (quello
+  // scritto o scelto durante il log di una cattura), senza riferimento
+  // diretto al documento Species.
+  app.get('/name/:name', auth, async (req, reply) => {
+    const name = (req.params.name || '').trim()
+    if (!name) return reply.status(400).send({ error: 'Nome specie mancante' })
+
+    const exact = new RegExp('^' + escapeRegExp(name) + '$', 'i')
+    const sp = await Species.findOne({
+      $or: [{ commonNameIt: exact }, { commonNameEn: exact }, { scientificName: exact }]
+    }).lean()
+
+    if (!sp) return reply.status(404).send({ error: 'Specie non trovata nel catalogo' })
+
+    // Le catture sono testo libero: il match usa tutti i nomi noti della
+    // specie (non solo quello passato in query), altrimenti una cattura
+    // loggata con "Spigola" non si aggancerebbe a una ricerca per "Branzino".
+    const knownNames = [sp.commonNameIt, sp.commonNameEn, sp.scientificName].filter(Boolean)
+    const nameMatch = { $in: knownNames.map(n => new RegExp('^' + escapeRegExp(n) + '$', 'i')) }
+
+    const [calendar, gear] = await Promise.all([
+      Session.aggregate([
+        { $unwind: '$catches' },
+        { $match: { 'catches.species': nameMatch } },
+        { $group: { _id: { $month: '$date' }, count: { $sum: 1 } } }
+      ]),
+      Session.aggregate([
+        { $unwind: '$catches' },
+        { $match: { 'catches.species': nameMatch } },
+        { $group: { _id: { bait: '$catches.baitUsed', technique: '$technique' }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 8 }
+      ])
+    ])
+
+    const monthlyCatches = Array(12).fill(0)
+    for (const m of calendar) monthlyCatches[m._id - 1] = m.count
+
+    return {
+      ...sp,
+      monthlyCatches,
+      topBaits: [...new Set(gear.map(g => g._id.bait).filter(Boolean))].slice(0, 6),
+      topTechniques: [...new Set(gear.map(g => g._id.technique).filter(Boolean))].slice(0, 6),
+      catchCount: monthlyCatches.reduce((a, b) => a + b, 0)
+    }
+  })
+
   // GET /api/species/:key/detail — descrizione + immagine, arricchite on-demand da GBIF
   app.get('/:key/detail', auth, async (req, reply) => {
     const gbifKey = parseInt(req.params.key, 10)
