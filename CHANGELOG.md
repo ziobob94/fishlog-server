@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.19.0...server-v1.20.0) (2026-10-07)
+
+
+### Features
+
+* classifica leggera su contenuto pubblico ([af281ea](https://github.com/ziobob94/fishlog-server/commit/af281ea0ca0066bed9d8f16a2b6739aff15433a0))
+
 # [1.19.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.18.0...server-v1.19.0) (2026-10-07)
 
 
