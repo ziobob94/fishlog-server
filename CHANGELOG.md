@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.16.0...server-v1.17.0) (2026-10-07)
+
+
+### Features
+
+* scheda specie pubblica con calendario ed esche dai dati reali ([5920f62](https://github.com/ziobob94/fishlog-server/commit/5920f624708cd9374fc605aa0d0245190f8f9187))
+
 # [1.16.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.15.3...server-v1.16.0) (2026-09-10)
 
 
