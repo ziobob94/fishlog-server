@@ -30,6 +30,7 @@ import notificationRoutes from './routes/notifications.js'
 import listingRoutes    from './routes/listings.js'
 import legalRoutes       from './routes/legal.js'
 import ebayNotificationRoutes from './routes/ebayNotifications.js'
+import regulationRoutes  from './routes/regulations.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
@@ -137,6 +138,7 @@ await app.register(notificationRoutes, { prefix: '/api/notifications' })
 await app.register(listingRoutes, { prefix: '/api/listings' })
 await app.register(legalRoutes,   { prefix: '/api/legal' })
 await app.register(ebayNotificationRoutes, { prefix: '/api/ebay' })
+await app.register(regulationRoutes, { prefix: '/api/regulations' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
