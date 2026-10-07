@@ -93,6 +93,56 @@ export default async function sessionRoutes(app) {
     return stats[0] || { totalSessions: 0, totalCatches: 0 }
   })
 
+  // GET /api/sessions/leaderboard?period=week|month|all — classifica su
+  // contenuto pubblico (visibility 'users', mai private o di gruppo),
+  // formula semplice e dichiarata al client così com'è: +10 a uscita
+  // pubblicata, +3 a cattura registrata, +5 se l'uscita ha foto/video.
+  // Conta solo cosa è già visibile a tutti: niente da "barare" pubblicando
+  // più spesso a vuoto, perché serve comunque contenuto vero.
+  app.get('/leaderboard', auth, async (req) => {
+    const { period = 'all' } = req.query
+    const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
+    if (period === 'week' || period === 'month') {
+      const days = period === 'week' ? 7 : 30
+      match.date = { $gte: new Date(Date.now() - days * 86400000) }
+    }
+
+    const rows = await Session.aggregate([
+      { $match: match },
+      { $addFields: {
+          catchesInSession: { $size: { $ifNull: ['$catches', []] } },
+          hasMedia: { $gt: [{ $size: { $ifNull: ['$media', []] } }, 0] }
+        }
+      },
+      { $group: {
+          _id: '$userId',
+          sessionsCount: { $sum: 1 },
+          catchesCount: { $sum: '$catchesInSession' },
+          mediaSessions: { $sum: { $cond: ['$hasMedia', 1, 0] } }
+        }
+      },
+      { $addFields: {
+          score: { $add: [
+            { $multiply: ['$sessionsCount', 10] },
+            { $multiply: ['$catchesCount', 3] },
+            { $multiply: ['$mediaSessions', 5] }
+          ] }
+        }
+      },
+      { $sort: { score: -1 } },
+      { $limit: 50 },
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $project: {
+          _id: 0, userId: '$_id', score: 1, sessionsCount: 1, catchesCount: 1,
+          displayName: '$user.displayName', avatar: '$user.avatar'
+        }
+      }
+    ])
+
+    return { data: rows, period }
+  })
+
   // GET /api/sessions/:id
   app.get('/:id', auth, async (req, reply) => {
     const filter = await visibilityFilter(req.user)
