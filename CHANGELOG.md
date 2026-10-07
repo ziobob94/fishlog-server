@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.17.0...server-v1.18.0) (2026-10-07)
+
+
+### Features
+
+* suggeritore attrezzatura dai dati reali (filtri su scheda specie) ([9188581](https://github.com/ziobob94/fishlog-server/commit/9188581fffeae6a06c4a0751f574cd4928988ef2))
+
 # [1.17.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.16.0...server-v1.17.0) (2026-10-07)
 
 
