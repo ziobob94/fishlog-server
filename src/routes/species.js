@@ -114,12 +114,16 @@ export default async function speciesRoutes(app) {
     return { data }
   })
 
-  // GET /api/species/name/:name — scheda specie pubblica: dati del catalogo
-  // più calendario mensile ed esche/tecniche più usate, calcolati dalle
-  // catture reali della community (non da stime editoriali). Si cerca per
-  // nome e non per _id perché catches.species è testo libero (quello
-  // scritto o scelto durante il log di una cattura), senza riferimento
-  // diretto al documento Species.
+  // GET /api/species/name/:name?technique=&waterType= — scheda specie
+  // pubblica: dati del catalogo più calendario mensile e "ricetta"
+  // attrezzatura (esche, montatura, lenza, tecnica), calcolati dalle
+  // catture reali della community invece che da stime editoriali.
+  // technique/waterType sono filtri opzionali sullo stesso principio del
+  // "suggeritore attrezzatura": stessa aggregazione, ristretta a uno
+  // scenario più specifico quando l'utente lo sceglie. Si cerca per nome e
+  // non per _id perché catches.species è testo libero (quello scritto o
+  // scelto durante il log di una cattura), senza riferimento diretto al
+  // documento Species.
   app.get('/name/:name', auth, async (req, reply) => {
     const name = (req.params.name || '').trim()
     if (!name) return reply.status(400).send({ error: 'Nome specie mancante' })
@@ -137,18 +141,38 @@ export default async function speciesRoutes(app) {
     const knownNames = [sp.commonNameIt, sp.commonNameEn, sp.scientificName].filter(Boolean)
     const nameMatch = { $in: knownNames.map(n => new RegExp('^' + escapeRegExp(n) + '$', 'i')) }
 
-    const [calendar, gear] = await Promise.all([
+    const { technique, waterType } = req.query
+    const baseMatch = { 'catches.species': nameMatch }
+    if (technique)  baseMatch.technique = technique
+    if (waterType)  baseMatch.waterType = waterType
+
+    // Valore più frequente per un campo (bait, montatura...), su catture
+    // che rispettano gli stessi filtri: $sortByCount è group+sort+count in
+    // un solo stage, scartiamo prima i vuoti per non farli vincere per
+    // "popolarità" di un campo semplicemente non compilato.
+    async function topValues(path, limit = 5) {
+      const rows = await Session.aggregate([
+        { $unwind: '$catches' },
+        { $match: { ...baseMatch, [path]: { $nin: [null, ''] } } },
+        { $sortByCount: `$${path}` },
+        { $limit: limit }
+      ])
+      return rows.map(r => r._id)
+    }
+
+    const [calendar, topBaits, topRigs, topTechniques, lineStats] = await Promise.all([
       Session.aggregate([
         { $unwind: '$catches' },
-        { $match: { 'catches.species': nameMatch } },
+        { $match: baseMatch },
         { $group: { _id: { $month: '$date' }, count: { $sum: 1 } } }
       ]),
+      topValues('catches.baitUsed'),
+      topValues('catches.rigType'),
+      technique ? [] : topValues('technique'),
       Session.aggregate([
         { $unwind: '$catches' },
-        { $match: { 'catches.species': nameMatch } },
-        { $group: { _id: { bait: '$catches.baitUsed', technique: '$technique' }, count: { $sum: 1 } } },
-        { $sort: { count: -1 } },
-        { $limit: 8 }
+        { $match: { ...baseMatch, 'catches.lineMainLb': { $ne: null } } },
+        { $group: { _id: null, avg: { $avg: '$catches.lineMainLb' }, min: { $min: '$catches.lineMainLb' }, max: { $max: '$catches.lineMainLb' } } }
       ])
     ])
 
@@ -158,8 +182,10 @@ export default async function speciesRoutes(app) {
     return {
       ...sp,
       monthlyCatches,
-      topBaits: [...new Set(gear.map(g => g._id.bait).filter(Boolean))].slice(0, 6),
-      topTechniques: [...new Set(gear.map(g => g._id.technique).filter(Boolean))].slice(0, 6),
+      topBaits,
+      topRigs,
+      topTechniques,
+      lineMainLb: lineStats[0] ? { avg: Math.round(lineStats[0].avg), min: lineStats[0].min, max: lineStats[0].max } : null,
       catchCount: monthlyCatches.reduce((a, b) => a + b, 0)
     }
   })
