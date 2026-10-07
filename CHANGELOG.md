@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.18.0...server-v1.19.0) (2026-10-07)
+
+
+### Features
+
+* normativa con fonte citata (taglie minime, fermi, specie protette) ([386b7fe](https://github.com/ziobob94/fishlog-server/commit/386b7fe3e51b8c983cbde5251f586a2369727aac))
+
 # [1.18.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.17.0...server-v1.18.0) (2026-10-07)
 
 
