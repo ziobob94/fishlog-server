@@ -1,3 +1,13 @@
+# [1.21.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.20.0...server-v1.21.0) (2026-11-09)
+
+
+### Features
+
+* **market:** pubblicare annunci richiede un venditore verificato ([9ff7649](https://github.com/ziobob94/fishlog-server/commit/9ff7649114722c2b70ed6831684a2a8a6de6d954))
+* **sessions:** filtro mine=true per elencare solo le proprie uscite ([5c41859](https://github.com/ziobob94/fishlog-server/commit/5c418590eca2858dde84229137943c41674e8059))
+* **shop:** dati venditore, motivo del rifiuto e richiesta sito per il negozio ([2ac1409](https://github.com/ziobob94/fishlog-server/commit/2ac1409aeba5cf33d964cd47d072d1d1f55ea48f))
+* **stats:** catture per mese (12 mesi) e specie più catturate in /sessions/stats ([6cd4770](https://github.com/ziobob94/fishlog-server/commit/6cd4770df51334753c426924399f72422b203338))
+
 # [1.20.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.19.0...server-v1.20.0) (2026-10-07)
 
 
