@@ -90,7 +90,32 @@ export default async function sessionRoutes(app) {
       { $match: filter },
       { $group: { _id: null, totalSessions: { $sum: 1 }, totalCatches: { $sum: '$totalCatches' }, avgRating: { $avg: '$rating' } } }
     ])
-    return stats[0] || { totalSessions: 0, totalCatches: 0 }
+    const base = stats[0] || { totalSessions: 0, totalCatches: 0 }
+
+    // Catture per mese negli ultimi 12 mesi (mese corrente incluso) e specie più catturate
+    const from = new Date()
+    from.setDate(1); from.setHours(0, 0, 0, 0)
+    from.setMonth(from.getMonth() - 11)
+    const [monthly, topSpecies] = await Promise.all([
+      Session.aggregate([
+        { $match: { ...filter, date: { $gte: from } } },
+        { $group: { _id: { y: { $year: '$date' }, m: { $month: '$date' } }, catches: { $sum: '$totalCatches' } } }
+      ]),
+      Session.aggregate([
+        { $match: filter },
+        { $unwind: '$catches' },
+        { $group: { _id: '$catches.species', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+      ])
+    ])
+    const byKey = new Map(monthly.map(r => [`${r._id.y}-${r._id.m}`, r.catches]))
+    const catchesByMonth = []
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(from.getFullYear(), from.getMonth() + i, 1)
+      catchesByMonth.push({ year: d.getFullYear(), month: d.getMonth() + 1, catches: byKey.get(`${d.getFullYear()}-${d.getMonth() + 1}`) || 0 })
+    }
+    return { ...base, catchesByMonth, topSpecies: topSpecies.map(r => ({ species: r._id, count: r.count })) }
   })
 
   // GET /api/sessions/leaderboard?period=week|month|all — classifica su
