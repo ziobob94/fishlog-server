@@ -65,6 +65,7 @@ export default async function adminRoutes(app) {
 
     user.shop.verificationStatus = 'verified'
     user.shop.verifiedAt = new Date()
+    user.shop.rejectionReason = ''
     await user.save()
     return user.sanitize()
   })
@@ -76,6 +77,7 @@ export default async function adminRoutes(app) {
 
     user.shop.verificationStatus = 'rejected'
     user.shop.enabled = false
+    user.shop.rejectionReason = (req.body?.reason || '').toString().slice(0, 500)
     await user.save()
     return user.sanitize()
   })

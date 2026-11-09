@@ -165,7 +165,8 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { enabled, name, description } = req.body
+    const { enabled, name, description, sellerType, legalName, vatNumber, city, phone, website, delivery, contact } = req.body
+    const locked = user.shop.verificationStatus === 'verified'
     // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
     // in coda di revisione: solo l'admin può portarla a "verified".
     if (enabled !== undefined) {
@@ -177,7 +178,30 @@ export default async function authRoutes(app) {
     }
     if (name !== undefined)        user.shop.name = name
     if (description !== undefined) user.shop.description = description
+    if (sellerType !== undefined && ['privato', 'negozio'].includes(sellerType)) user.shop.sellerType = sellerType
+    // Ragione sociale e P.IVA verificate non si cambiano più
+    if (!locked) {
+      if (legalName !== undefined) user.shop.legalName = legalName
+      if (vatNumber !== undefined) user.shop.vatNumber = vatNumber
+    }
+    if (city !== undefined)    user.shop.city = city
+    if (phone !== undefined)   user.shop.phone = phone
+    if (website !== undefined) user.shop.website = website
+    if (contact !== undefined) user.shop.contact = contact
+    if (Array.isArray(delivery)) user.shop.delivery = delivery.filter(d => ['ritiro', 'spedizione'].includes(d))
 
+    await user.save()
+    return publicUser(user)
+  })
+
+  // Richiesta di contatto per la realizzazione del sito del negozio
+  app.post('/me/shop/site-request', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+    if (user.shop.verificationStatus !== 'verified') {
+      return reply.status(403).send({ error: 'Negozio non ancora verificato' })
+    }
+    user.shop.siteRequest = { requested: !!req.body?.requested, at: new Date() }
     await user.save()
     return publicUser(user)
   })
@@ -569,7 +593,17 @@ export default async function authRoutes(app) {
         enabled:            !!user.shop?.enabled,
         name:               user.shop?.name || '',
         description:        user.shop?.description || '',
-        verificationStatus: user.shop?.verificationStatus || 'none'
+        verificationStatus: user.shop?.verificationStatus || 'none',
+        sellerType:         user.shop?.sellerType || 'negozio',
+        legalName:          user.shop?.legalName || '',
+        vatNumber:          user.shop?.vatNumber || '',
+        city:               user.shop?.city || '',
+        phone:              user.shop?.phone || '',
+        website:            user.shop?.website || '',
+        delivery:           user.shop?.delivery || [],
+        contact:            user.shop?.contact || '',
+        rejectionReason:    user.shop?.rejectionReason || '',
+        siteRequested:      !!user.shop?.siteRequest?.requested
       },
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }
     }
