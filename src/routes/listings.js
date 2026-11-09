@@ -165,7 +165,7 @@ export default async function listingRoutes(app) {
   app.get('/shops', async (req) => {
     const { page = 1, limit = 20, search } = req.query
 
-    const filter = { 'shop.enabled': true, 'shop.verificationStatus': 'verified' }
+    const filter = { 'shop.enabled': true, 'shop.verificationStatus': 'verified', 'shop.sellerType': { $ne: 'privato' } }
     if (search) {
       const re = new RegExp(escapeRegExp(search), 'i')
       filter.$or = [{ 'shop.name': re }, { displayName: re }]
@@ -225,9 +225,14 @@ export default async function listingRoutes(app) {
 
     const user = await User.findById(req.user.sub).select('shop').lean()
 
+    // Solo i venditori verificati possono pubblicare annunci
+    if (user?.shop?.verificationStatus !== 'verified') {
+      return reply.status(403).send({ error: 'Per pubblicare annunci devi prima essere un venditore verificato', code: 'SELLER_NOT_VERIFIED' })
+    }
+
     const listing = await Listing.create({
       seller: req.user.sub,
-      sellerType: user?.shop?.enabled ? 'negozio' : 'privato',
+      sellerType: user.shop.enabled && user.shop.sellerType !== 'privato' ? 'negozio' : 'privato',
       title, description, category, condition, price,
       currency: currency || 'EUR',
       location

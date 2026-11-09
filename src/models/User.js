@@ -27,7 +27,20 @@ const UserSchema = new mongoose.Schema({
     description:         { type: String, trim: true },
     verificationStatus:  { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
     verificationRequestedAt: { type: Date },
-    verifiedAt:          { type: Date }
+    verifiedAt:          { type: Date },
+    // Percorso venditore: tipo di venditore e dati dell'attività (ragione
+    // sociale e P.IVA diventano di sola lettura una volta verificati).
+    sellerType:          { type: String, enum: ['privato', 'negozio'], default: 'negozio' },
+    legalName:           { type: String, trim: true },
+    vatNumber:           { type: String, trim: true },
+    city:                { type: String, trim: true },
+    phone:               { type: String, trim: true },
+    website:             { type: String, trim: true },
+    delivery:            [{ type: String, enum: ['ritiro', 'spedizione'] }],
+    contact:             { type: String, trim: true },
+    rejectionReason:     { type: String, trim: true },
+    // Richiesta (facoltativa) di un sito per il negozio, gestita a parte
+    siteRequest:         { requested: { type: Boolean, default: false }, at: { type: Date } }
   },
 
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
