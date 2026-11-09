@@ -34,6 +34,18 @@ const AVATAR_MIME = {
   'image/webp': '.webp'
 }
 
+const SHOP_DOC_MIME = {
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+}
+
+// I documenti di verifica NON stanno sotto /uploads (servita pubblicamente)
+export function shopDocsDir() {
+  return path.resolve(cfg.get('app.dirs.uploads'), '..', 'private-docs', 'shops')
+}
+
 function uploadsDir() {
   return path.resolve(cfg.get('app.dirs.uploads'))
 }
@@ -190,6 +202,39 @@ export default async function authRoutes(app) {
     if (contact !== undefined) user.shop.contact = contact
     if (Array.isArray(delivery)) user.shop.delivery = delivery.filter(d => ['ritiro', 'spedizione'].includes(d))
 
+    await user.save()
+    return publicUser(user)
+  })
+
+  // Documento per la verifica (PDF o foto): lo vede solo il team (admin)
+  app.post('/me/shop/document', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const part = await req.file({ limits: { fileSize: 10 * 1024 * 1024 } })
+    if (!part) return reply.status(400).send({ error: 'Nessun file ricevuto' })
+    const ext = SHOP_DOC_MIME[part.mimetype]
+    if (!ext) return reply.status(400).send({ error: 'Formato non supportato (PDF, JPG, PNG, WEBP)' })
+
+    let buffer
+    try { buffer = await part.toBuffer() } catch {
+      return reply.status(413).send({ error: 'File troppo grande (massimo 10 MB)' })
+    }
+
+    await fs.mkdir(shopDocsDir(), { recursive: true })
+    const filename = `${user._id}-${Date.now()}${ext}`
+    await fs.writeFile(path.join(shopDocsDir(), filename), buffer)
+
+    // Sostituisce l'eventuale documento precedente
+    const old = user.shop.document?.filename
+    if (old) await fs.unlink(path.join(shopDocsDir(), path.basename(old))).catch(() => {})
+
+    user.shop.document = {
+      filename,
+      originalName: (part.filename || '').slice(0, 120),
+      mimetype: part.mimetype,
+      uploadedAt: new Date()
+    }
     await user.save()
     return publicUser(user)
   })
@@ -603,6 +648,7 @@ export default async function authRoutes(app) {
         delivery:           user.shop?.delivery || [],
         contact:            user.shop?.contact || '',
         rejectionReason:    user.shop?.rejectionReason || '',
+        documentUploaded:   !!user.shop?.document?.filename,
         siteRequested:      !!user.shop?.siteRequest?.requested
       },
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }

@@ -5,6 +5,9 @@ import AppConfig from '../config.js'
 import { reloadRuntimeConfig } from '../runtimeConfigStore.js'
 import { CONFIG_MANIFEST, CONFIG_MANIFEST_BY_KEY } from '../configManifest.js'
 import { escapeRegExp } from '../utils/regex.js'
+import { shopDocsDir } from './auth.js'
+import fs from 'node:fs'
+import path from 'node:path'
 
 const cfg = new AppConfig()
 
@@ -56,6 +59,19 @@ export default async function adminRoutes(app) {
     const data = await User.find({ 'shop.verificationStatus': 'pending' })
       .select('displayName email shop').sort({ 'shop.verificationRequestedAt': 1 }).lean()
     return { data }
+  })
+
+  // GET /api/admin/shops/:id/document — documento di verifica caricato dal venditore
+  app.get('/shops/:id/document', adminOnly, async (req, reply) => {
+    const user = await User.findById(req.params.id).select('shop.document').lean()
+    const doc = user?.shop?.document
+    if (!doc?.filename) return reply.status(404).send({ error: 'Documento non trovato' })
+    const file = path.join(shopDocsDir(), path.basename(doc.filename))
+    if (!fs.existsSync(file)) return reply.status(404).send({ error: 'Documento non trovato' })
+    reply.header('Content-Type', doc.mimetype || 'application/octet-stream')
+    reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.originalName || doc.filename)}"`)
+    reply.header('Cache-Control', 'private, no-store')
+    return reply.send(fs.createReadStream(file))
   })
 
   // POST /api/admin/shops/:id/approve

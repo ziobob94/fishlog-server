@@ -39,6 +39,8 @@ const UserSchema = new mongoose.Schema({
     delivery:            [{ type: String, enum: ['ritiro', 'spedizione'] }],
     contact:             { type: String, trim: true },
     rejectionReason:     { type: String, trim: true },
+    // Documento di verifica (visura, ecc.): salvato fuori da /uploads, non pubblico
+    document:            { filename: String, originalName: String, mimetype: String, uploadedAt: Date },
     // Richiesta (facoltativa) di un sito per il negozio, gestita a parte
     siteRequest:         { requested: { type: Boolean, default: false }, at: { type: Date } }
   },

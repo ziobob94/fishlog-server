@@ -6,6 +6,10 @@ import { canEdit } from '../utils/listingAccess.js'
 import { searchEbay } from '../utils/ebay.js'
 import { escapeRegExp } from '../utils/regex.js'
 
+// Dati del negozio visibili a tutti: P.IVA, telefono, documento e motivo del
+// rifiuto restano privati.
+const PUBLIC_SELLER_SELECT = 'displayName avatar shop.enabled shop.name shop.description shop.verificationStatus shop.verifiedAt shop.sellerType shop.website shop.city shop.delivery shop.contact'
+
 // Tecnica di pesca più praticata → attrezzatura pertinente da cercare su
 // eBay quando l'utente non ha impostato una ricerca propria.
 const TECHNIQUE_QUERY = {
@@ -96,7 +100,7 @@ export default async function listingRoutes(app) {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('seller', 'displayName avatar shop')
+        .populate('seller', PUBLIC_SELLER_SELECT)
         .lean(),
       Listing.countDocuments(filter)
     ])
@@ -155,7 +159,7 @@ export default async function listingRoutes(app) {
   app.get('/mine', auth, async (req) => {
     const baseUrl = `${req.protocol}://${req.headers.host}`
     const listings = await Listing.find({ seller: req.user.sub, status: { $ne: 'deleted' } })
-      .sort({ createdAt: -1 }).populate('seller', 'displayName avatar shop').lean()
+      .sort({ createdAt: -1 }).populate('seller', PUBLIC_SELLER_SELECT).lean()
     return { data: listings.map(l => withMediaUrls(baseUrl, l)) }
   })
 
@@ -173,7 +177,7 @@ export default async function listingRoutes(app) {
 
     const skip = (Number(page) - 1) * Number(limit)
     const [shops, total] = await Promise.all([
-      User.find(filter).select('displayName avatar shop')
+      User.find(filter).select(PUBLIC_SELLER_SELECT)
         .sort({ 'shop.verifiedAt': -1 }).skip(skip).limit(Number(limit)).lean(),
       User.countDocuments(filter)
     ])
@@ -198,7 +202,7 @@ export default async function listingRoutes(app) {
 
   // GET /api/listings/shop/:userId — vetrina pubblica di un negozio
   app.get('/shop/:userId', async (req, reply) => {
-    const user = await User.findById(req.params.userId).select('displayName avatar shop').lean()
+    const user = await User.findById(req.params.userId).select(PUBLIC_SELLER_SELECT).lean()
     if (!user?.shop?.enabled) return reply.status(404).send({ error: 'Negozio non trovato' })
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
@@ -208,7 +212,7 @@ export default async function listingRoutes(app) {
 
   // GET /api/listings/:id
   app.get('/:id', async (req, reply) => {
-    const listing = await Listing.findById(req.params.id).populate('seller', 'displayName avatar shop email').lean()
+    const listing = await Listing.findById(req.params.id).populate('seller', PUBLIC_SELLER_SELECT + ' email').lean()
     if (!listing || listing.status === 'deleted') return reply.status(404).send({ error: 'Annuncio non trovato' })
     await Listing.updateOne({ _id: listing._id }, { $inc: { views: 1 } })
     const baseUrl = `${req.protocol}://${req.headers.host}`
