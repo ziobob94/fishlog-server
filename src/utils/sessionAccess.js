@@ -3,14 +3,10 @@ import Group from '../models/Group.js'
 
 /**
  * Restituisce il filtro MongoDB per le sessioni visibili all'utente corrente.
- * - admin/moderator vedono tutto (moderator escluse private altrui)
+ * - nessun ruolo vede le uscite private altrui (nemmeno admin/moderator)
  * - user vede: proprie + visibility=users + gruppi di cui è membro
  */
 export async function visibilityFilter(user) {
-  if (user.role === 'admin') {
-    return {} // vede tutto
-  }
-
   const userId = user.sub
   // Le aggregation pipeline ($match), a differenza di Model.find(), non castano
   // automaticamente una stringa a ObjectId: va fatto esplicitamente, altrimenti
@@ -21,18 +17,7 @@ export async function visibilityFilter(user) {
   const groups = await Group.find({ members: userId }).select('_id').lean()
   const groupIds = groups.map(g => g._id)
 
-  if (user.role === 'moderator') {
-    return {
-      hidden: { $ne: true },
-      $or: [
-        { userId: userObjectId },
-        { visibility: 'users' },
-        { visibility: 'group', allowedGroups: { $in: groupIds } }
-      ]
-    }
-  }
-
-  // ruolo user
+  // moderator/admin: stesso perimetro (la moderazione passa da /hide)
   return {
     hidden: { $ne: true },
     $or: [
@@ -45,10 +30,11 @@ export async function visibilityFilter(user) {
 
 /**
  * Verifica se un utente può modificare/eliminare una sessione.
- * Solo autore o admin.
+ * Solo l'autore: nemmeno gli admin modificano le uscite altrui
+ * (possono nasconderle con /hide).
  */
 export function canEdit(user, session) {
-  return user.role === 'admin' || session.userId?.toString() === user.sub
+  return !!session.userId && session.userId.toString() === user.sub
 }
 
 /**
