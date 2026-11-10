@@ -127,6 +127,9 @@ export default async function friendRoutes(app) {
     request.status = 'accepted'
     await request.save()
 
+    // La richiesta è gestita: la notifica con Accetta/Rifiuta non ha più senso.
+    await Notification.deleteMany({ type: 'friend_request', 'data.requestId': request._id })
+
     notify(request.requester, 'friend_accept', req.user.sub, { requestId: request._id })
       .catch(err => app.log.error(err, 'Creazione notifica accettazione amicizia fallita'))
 
@@ -142,6 +145,7 @@ export default async function friendRoutes(app) {
       return reply.status(403).send({ error: 'Permesso negato' })
 
     await request.deleteOne()
+    await Notification.deleteMany({ type: 'friend_request', 'data.requestId': request._id })
     return { deleted: true }
   })
 
