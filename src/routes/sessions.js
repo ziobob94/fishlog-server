@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import mongoose from 'mongoose'
 import Session from '../models/Session.js'
 import { visibilityFilter, canEdit, canModerate } from '../utils/sessionAccess.js'
 import { escapeRegExp } from '../utils/regex.js'
@@ -56,12 +57,15 @@ export default async function sessionRoutes(app) {
     }
     if (search) {
       const re = new RegExp(escapeRegExp(search), 'i')
-      filter.$or = [
+      // $and: filter.$or contiene già il perimetro di visibilità (proprie,
+      // condivise, di gruppo) e riassegnarlo farebbe trovare anche le uscite
+      // private altrui.
+      filter.$and = [{ $or: [
         { title: re },
         { notes: re },
         { 'location.name': re },
         { 'location.spot': re }
-      ]
+      ] }]
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit)
@@ -87,7 +91,9 @@ export default async function sessionRoutes(app) {
 
   // GET /api/sessions/stats
   app.get('/stats', auth, async (req) => {
-    const filter = await visibilityFilter(req.user)
+    // Statistiche personali: solo le uscite dell'utente, non quelle altrui
+    // visibili nella community.
+    const filter = { userId: new mongoose.Types.ObjectId(req.user.sub) }
     const stats = await Session.aggregate([
       { $match: filter },
       { $group: { _id: null, totalSessions: { $sum: 1 }, totalCatches: { $sum: '$totalCatches' }, avgRating: { $avg: '$rating' } } }

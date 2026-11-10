@@ -9,6 +9,7 @@ import Notification from '../models/Notification.js'
 import AppConfig from '../config.js'
 import { sendMail, newChatMessageEmail } from '../utils/mailer.js'
 import { sendToUser } from '../ws/hub.js'
+import { safeExt } from '../utils/uploadExt.js'
 
 const cfg = new AppConfig()
 const CLIENT_URL = cfg.get('client.url')
@@ -317,7 +318,7 @@ export default async function chatRoutes(app) {
     let uploadedFile = null
     for await (const part of req.parts()) {
       if (part.type !== 'file') continue
-      const ext = path.extname(part.filename) || ''
+      const ext = safeExt(part.filename, '.bin')
       const filename = `${nanoid()}_${Date.now()}${ext}`
       const buffer = await part.toBuffer()
       await fs.writeFile(path.join(uploadsDir(), filename), buffer)

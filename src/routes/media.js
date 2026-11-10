@@ -8,6 +8,7 @@ import AppConfig from '../config.js'
 import { canEdit } from '../utils/sessionAccess.js'
 import { canEdit as canEditPost } from '../utils/postAccess.js'
 import { canEdit as canEditListing } from '../utils/listingAccess.js'
+import { safeExt } from '../utils/uploadExt.js'
 
 const cfg = new AppConfig()
 
@@ -56,7 +57,7 @@ export default async function mediaRoutes(app) {
       const mediaType = ALLOWED_MIME[part.mimetype]
       if (!mediaType) { await part.file.resume(); continue }
 
-      const ext = path.extname(part.filename) || (mediaType === 'photo' ? '.jpg' : '.mp4')
+      const ext = safeExt(part.filename, mediaType === 'photo' ? '.jpg' : '.mp4')
       const filename = `${nanoid()}_${Date.now()}${ext}`
       const filepath = path.join(uploadsDir(), filename)
 
@@ -146,7 +147,7 @@ export default async function mediaRoutes(app) {
       const mediaType = ALLOWED_MIME[part.mimetype]
       if (!mediaType) { await part.file.resume(); continue }
 
-      const ext = path.extname(part.filename) || (mediaType === 'photo' ? '.jpg' : '.mp4')
+      const ext = safeExt(part.filename, mediaType === 'photo' ? '.jpg' : '.mp4')
       const filename = `${nanoid()}_${Date.now()}${ext}`
       const filepath = path.join(uploadsDir(), filename)
 

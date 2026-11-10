@@ -124,7 +124,7 @@ export default async function authRoutes(app) {
 
     const user = new User({
       email: normalizedEmail,
-      displayName: isNonEmptyString(displayName) ? displayName : normalizedEmail.split('@')[0],
+      displayName: isNonEmptyString(displayName) ? displayName.trim().slice(0, 60) : normalizedEmail.split('@')[0],
       acceptedTermsAt: new Date(),
       acceptedTermsVersion: TERMS_VERSION
     })
@@ -162,7 +162,11 @@ export default async function authRoutes(app) {
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
     const { displayName, defaultVisibility } = req.body
-    if (displayName !== undefined) user.displayName = displayName
+    if (displayName !== undefined) {
+      if (!isNonEmptyString(displayName) || displayName.trim().length > 60)
+        return reply.status(400).send({ error: 'Nome non valido (1-60 caratteri)' })
+      user.displayName = displayName.trim()
+    }
     if (defaultVisibility !== undefined) {
       if (!['public', 'users', 'group', 'private'].includes(defaultVisibility))
         return reply.status(400).send({ error: 'Visibilità non valida' })
