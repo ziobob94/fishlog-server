@@ -124,7 +124,7 @@ export default async function authRoutes(app) {
 
     const user = new User({
       email: normalizedEmail,
-      displayName: isNonEmptyString(displayName) ? displayName.trim().slice(0, 60) : normalizedEmail.split('@')[0],
+      displayName: (typeof displayName === 'string' && displayName.trim()) ? displayName.trim().slice(0, 60) : normalizedEmail.split('@')[0],
       acceptedTermsAt: new Date(),
       acceptedTermsVersion: TERMS_VERSION
     })
@@ -163,7 +163,7 @@ export default async function authRoutes(app) {
 
     const { displayName, defaultVisibility } = req.body
     if (displayName !== undefined) {
-      if (!isNonEmptyString(displayName) || displayName.trim().length > 60)
+      if (typeof displayName !== 'string' || !displayName.trim() || displayName.trim().length > 60)
         return reply.status(400).send({ error: 'Nome non valido (1-60 caratteri)' })
       user.displayName = displayName.trim()
     }
