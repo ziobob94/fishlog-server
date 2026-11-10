@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.23.0...server-v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **market:** i privati possono pubblicare senza verifica, solo i negozi richiedono la verifica ([55dc147](https://github.com/ziobob94/fishlog-server/commit/55dc147cce0bc2787c47e3460a3c3def5ced56c2))
+
 # [1.23.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.22.0...server-v1.23.0) (2026-11-10)
 
 
