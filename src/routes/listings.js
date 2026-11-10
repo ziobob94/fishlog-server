@@ -8,7 +8,7 @@ import { escapeRegExp } from '../utils/regex.js'
 
 // Dati del negozio visibili a tutti: P.IVA, telefono, documento e motivo del
 // rifiuto restano privati.
-const PUBLIC_SELLER_SELECT = 'displayName avatar shop.enabled shop.name shop.description shop.verificationStatus shop.verifiedAt shop.sellerType shop.website shop.city shop.delivery shop.contact'
+const PUBLIC_SELLER_SELECT = 'displayName avatar shop.enabled shop.name shop.description shop.verificationStatus shop.verifiedAt shop.sellerType shop.website shop.city shop.delivery shop.contact shop.logo'
 
 // Tecnica di pesca più praticata → attrezzatura pertinente da cercare su
 // eBay quando l'utente non ha impostato una ricerca propria.
@@ -193,7 +193,7 @@ export default async function listingRoutes(app) {
         _id: s._id,
         displayName: s.displayName,
         avatar: s.avatar,
-        shop: { name: s.shop.name, description: s.shop.description },
+        shop: { name: s.shop.name, description: s.shop.description, logo: s.shop.logo },
         activeListings: countBySeller[s._id.toString()] || 0
       })),
       pagination: { page: Number(page), limit: Number(limit), total, pages: Math.ceil(total / limit) }

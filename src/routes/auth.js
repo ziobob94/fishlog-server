@@ -206,6 +206,29 @@ export default async function authRoutes(app) {
     return publicUser(user)
   })
 
+  // Logo del negozio (pubblico, come l'avatar)
+  app.post('/me/shop/logo', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const part = await req.file({ limits: { fileSize: 5 * 1024 * 1024 } })
+    if (!part) return reply.status(400).send({ error: 'Nessun file ricevuto' })
+    const ext = AVATAR_MIME[part.mimetype]
+    if (!ext) return reply.status(400).send({ error: 'Formato non supportato (JPG, PNG, WEBP)' })
+
+    let buffer
+    try { buffer = await part.toBuffer() } catch {
+      return reply.status(413).send({ error: 'File troppo grande (massimo 5 MB)' })
+    }
+    await fs.mkdir(uploadsDir(), { recursive: true })
+    const filename = `shoplogo_${nanoid()}_${Date.now()}${ext}`
+    await fs.writeFile(path.join(uploadsDir(), filename), buffer)
+
+    user.shop.logo = `${req.protocol}://${req.headers.host}/uploads/${filename}`
+    await user.save()
+    return publicUser(user)
+  })
+
   // Documento per la verifica (PDF o foto): lo vede solo il team (admin)
   app.post('/me/shop/document', { preHandler: [app.authenticate] }, async (req, reply) => {
     const user = await User.findById(req.user.sub)
@@ -648,6 +671,7 @@ export default async function authRoutes(app) {
         delivery:           user.shop?.delivery || [],
         contact:            user.shop?.contact || '',
         rejectionReason:    user.shop?.rejectionReason || '',
+        logo:               user.shop?.logo || '',
         documentUploaded:   !!user.shop?.document?.filename,
         siteRequested:      !!user.shop?.siteRequest?.requested
       },
