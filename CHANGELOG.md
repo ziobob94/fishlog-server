@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.21.0...server-v1.22.0) (2026-11-10)
+
+
+### Features
+
+* **shop:** upload del documento di verifica (privato) e visione admin; dati negozio non pubblici ([9f2c18a](https://github.com/ziobob94/fishlog-server/commit/9f2c18a83cda1fb06e31c178a876e16c1b099084))
+
 # [1.21.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.20.0...server-v1.21.0) (2026-11-09)
 
 
