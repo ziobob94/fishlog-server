@@ -179,18 +179,26 @@ export default async function authRoutes(app) {
 
     const { enabled, name, description, sellerType, legalName, vatNumber, city, phone, website, delivery, contact } = req.body
     const locked = user.shop.verificationStatus === 'verified'
-    // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
-    // in coda di revisione: solo l'admin può portarla a "verified".
-    if (enabled !== undefined) {
-      user.shop.enabled = !!enabled
-      if (enabled && ['none', 'rejected'].includes(user.shop.verificationStatus)) {
-        user.shop.verificationStatus = 'pending'
-        user.shop.verificationRequestedAt = new Date()
+    // Un venditore privato non ha vetrina né verifica: può pubblicare subito.
+    // Passare a «privato» azzera una richiesta negozio in corso (non una già verificata).
+    if (sellerType === 'privato' && !locked) {
+      user.shop.sellerType = 'privato'
+      user.shop.enabled = false
+      user.shop.verificationStatus = 'none'
+    } else {
+      // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
+      // in coda di revisione: solo l'admin può portarla a "verified".
+      if (enabled !== undefined) {
+        user.shop.enabled = !!enabled
+        if (enabled && ['none', 'rejected'].includes(user.shop.verificationStatus)) {
+          user.shop.verificationStatus = 'pending'
+          user.shop.verificationRequestedAt = new Date()
+        }
       }
     }
     if (name !== undefined)        user.shop.name = name
     if (description !== undefined) user.shop.description = description
-    if (sellerType !== undefined && ['privato', 'negozio'].includes(sellerType)) user.shop.sellerType = sellerType
+    if (sellerType === 'negozio') user.shop.sellerType = sellerType
     // Ragione sociale e P.IVA verificate non si cambiano più
     if (!locked) {
       if (legalName !== undefined) user.shop.legalName = legalName
@@ -659,6 +667,8 @@ export default async function authRoutes(app) {
       pendingEmail:      user.pendingEmail || null,
       shop: {
         enabled:            !!user.shop?.enabled,
+        // Può pubblicare annunci: un privato sempre, un negozio solo se verificato
+        canPublish:         !(user.shop?.enabled && user.shop?.sellerType !== 'privato') || user.shop?.verificationStatus === 'verified',
         name:               user.shop?.name || '',
         description:        user.shop?.description || '',
         verificationStatus: user.shop?.verificationStatus || 'none',
