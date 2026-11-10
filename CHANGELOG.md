@@ -1,3 +1,11 @@
+# [1.23.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.22.0...server-v1.23.0) (2026-11-10)
+
+
+### Features
+
+* logo del negozio, uscita collegata e cattura in evidenza nei post ([5812b12](https://github.com/ziobob94/fishlog-server/commit/5812b1209bcfd08841dd8a0b324c1d0607df0701))
+* **notifiche:** notifiche in app per mi piace e commenti ai post ([3f08ecd](https://github.com/ziobob94/fishlog-server/commit/3f08ecd994ca405ea1bcf60d9ab4fa983bf77769))
+
 # [1.22.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.21.0...server-v1.22.0) (2026-11-10)
 
 
