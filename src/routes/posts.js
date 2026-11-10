@@ -7,6 +7,7 @@ import User from '../models/User.js'
 import { visibilityFilter, canEdit } from '../utils/postAccess.js'
 import { distanceKm } from '../utils/geo.js'
 import { sendMail, newCommentEmail, newLikeEmail } from '../utils/mailer.js'
+import Friendship from '../models/Friendship.js'
 import AppConfig from '../config.js'
 
 const cfg = new AppConfig()
@@ -18,6 +19,13 @@ const CLIENT_URL = cfg.get('client.url')
 function withMediaUrls(post, baseUrl) {
   if (!post.media?.length) return post
   return { ...post, media: post.media.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) }
+}
+
+// Segnalibro: l'elenco dei post salvati vive sull'utente (privato). Ai post
+// restituiti aggiungiamo solo il booleano `saved` per chi li sta leggendo.
+async function savedSet(userId) {
+  const u = await User.findById(userId).select('savedPosts').lean()
+  return new Set((u?.savedPosts || []).map(String))
 }
 
 // Notifica in app (e in realtime) all'autore del post per mi piace e commenti.
@@ -85,11 +93,24 @@ export default async function postRoutes(app) {
   app.get('/', auth, async (req) => {
     const {
       page = 1, limit = 20, author, group, type, visibility,
-      dateFrom, dateTo, near, radiusKm, sort
+      dateFrom, dateTo, near, radiusKm, sort, scope
     } = req.query
     const filter = await visibilityFilter(req.user)
+    const saved = await savedSet(req.user.sub)
 
     if (author) filter.author = author
+    // Tab del feed: amici (post degli amici accettati), gruppi (post dei miei
+    // gruppi), salvati (segnalibri). `author` esplicito ha la precedenza.
+    if (!author && scope === 'friends') {
+      const fr = await Friendship.find({ status: 'accepted', $or: [{ requester: req.user.sub }, { recipient: req.user.sub }] }).lean()
+      filter.author = { $in: fr.map(f => String(f.requester) === req.user.sub ? f.recipient : f.requester) }
+    }
+    if (scope === 'groups') {
+      const mine = await Group.find({ $or: [{ owner: req.user.sub }, { members: req.user.sub }] }).select('_id').lean()
+      filter.visibility = 'group'
+      filter.allowedGroups = { $in: mine.map(g => g._id) }
+    }
+    if (scope === 'saved') filter._id = { $in: [...saved] }
     if (group) {
       filter.visibility = 'group'
       filter.allowedGroups = group
@@ -130,7 +151,7 @@ export default async function postRoutes(app) {
       const radius = radiusKm ? parseFloat(radiusKm) : null
 
       let withDistance = all
-        .map(p => withMediaUrls({ ...p, distanceKm: distanceKm(nearCoords, p.event?.location) }, baseUrl))
+        .map(p => withMediaUrls({ ...p, saved: saved.has(String(p._id)), distanceKm: distanceKm(nearCoords, p.event?.location) }, baseUrl))
         .filter(p => p.distanceKm != null && (!radius || p.distanceKm <= radius))
 
       withDistance.sort(sort === 'date'
@@ -152,7 +173,7 @@ export default async function postRoutes(app) {
       Post.countDocuments(filter)
     ])
 
-    return { data: posts.map(p => withMediaUrls(p, baseUrl)), pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
+    return { data: posts.map(p => withMediaUrls({ ...p, saved: saved.has(String(p._id)) }, baseUrl)), pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) } }
   })
 
   // POST /api/posts — crea post/evento
@@ -207,7 +228,8 @@ export default async function postRoutes(app) {
       .populate('event.attendees.user', 'displayName avatar')
       .lean()
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
-    return withMediaUrls(post, `${req.protocol}://${req.headers.host}`)
+    const saved = await savedSet(req.user.sub)
+    return withMediaUrls({ ...post, saved: saved.has(String(post._id)) }, `${req.protocol}://${req.headers.host}`)
   })
 
   // PATCH /api/posts/:id — modifica (solo author/admin)
@@ -313,6 +335,20 @@ export default async function postRoutes(app) {
     comment.deleteOne()
     await post.save()
     return { deleted: true }
+  })
+
+  // POST /api/posts/:id/save — segnalibro (toggle), privato dell'utente
+  app.post('/:id/save', auth, async (req, reply) => {
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter }).select('_id').lean()
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+
+    const already = (await savedSet(req.user.sub)).has(String(post._id))
+    await User.updateOne(
+      { _id: req.user.sub },
+      already ? { $pull: { savedPosts: post._id } } : { $addToSet: { savedPosts: post._id } }
+    )
+    return { saved: !already }
   })
 
   // POST /api/posts/:id/like — mette/toglie "mi piace" (toggle)

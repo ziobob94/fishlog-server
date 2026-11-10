@@ -14,6 +14,9 @@ const UserSchema = new mongoose.Schema({
 
   role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
 
+  // Post salvati (segnalibro): privati, visibili solo al proprietario.
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
+
   defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
 
   // Un utente può attivare la "modalità negozio" per pubblicare una vetrina
