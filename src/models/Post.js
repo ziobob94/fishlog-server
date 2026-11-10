@@ -51,7 +51,10 @@ const PostSchema = new mongoose.Schema({
   responses: [ResponseSchema],
   comments:  [CommentSchema],
   likes:     [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  media:     [MediaSchema]
+  media:     [MediaSchema],
+  // Uscita collegata al post (solo dell'autore) e cattura in evidenza
+  session:        { type: mongoose.Schema.Types.ObjectId, ref: 'Session' },
+  featuredCatch:  { type: mongoose.Schema.Types.ObjectId }
 }, { timestamps: true })
 
 PostSchema.index({ visibility: 1, createdAt: -1 })

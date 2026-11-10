@@ -1,3 +1,4 @@
+import Session from '../models/Session.js'
 import Post from '../models/Post.js'
 import Group from '../models/Group.js'
 import User from '../models/User.js'
@@ -103,6 +104,7 @@ export default async function postRoutes(app) {
 
     const populatePost = (q) => q
       .populate('author', 'displayName avatar')
+      .populate('session', 'title date location.name totalCatches catches._id catches.species catches.lengthCm')
       .populate('allowedGroups', 'name')
       .populate('comments.user', 'displayName avatar')
       .populate('responses.user', 'displayName avatar')
@@ -143,8 +145,17 @@ export default async function postRoutes(app) {
 
   // POST /api/posts — crea post/evento
   app.post('/', auth, async (req, reply) => {
-    const { type, visibility, allowedGroups, title, body, event } = req.body
+    const { type, visibility, allowedGroups, title, body, event, sessionId, featuredCatchId } = req.body
     if (!body) return reply.status(400).send({ error: 'Testo obbligatorio' })
+
+    // Uscita collegata: solo una propria
+    let linkedSession = null
+    if (sessionId) {
+      linkedSession = await Session.findOne({ _id: sessionId, userId: req.user.sub }).select('_id catches._id').lean()
+      if (!linkedSession) return reply.status(400).send({ error: 'Uscita non valida' })
+      if (featuredCatchId && !linkedSession.catches?.some(c => c._id.toString() === String(featuredCatchId)))
+        return reply.status(400).send({ error: 'Cattura non valida' })
+    }
 
     if (visibility === 'group') {
       if (!allowedGroups?.length) return reply.status(400).send({ error: 'Gruppo obbligatorio' })
@@ -162,10 +173,13 @@ export default async function postRoutes(app) {
       allowedGroups: visibility === 'group' ? allowedGroups : [],
       title,
       body,
-      event: type === 'event' ? event : undefined
+      event: type === 'event' ? event : undefined,
+      session: linkedSession?._id,
+      featuredCatch: linkedSession && featuredCatchId ? featuredCatchId : undefined
     })
     await post.save()
     await post.populate('author', 'displayName avatar')
+    await post.populate('session', 'title date location.name totalCatches catches._id catches.species catches.lengthCm')
     return reply.status(201).send(post)
   })
 
@@ -174,6 +188,7 @@ export default async function postRoutes(app) {
     const filter = await visibilityFilter(req.user)
     const post = await Post.findOne({ _id: req.params.id, ...filter })
       .populate('author', 'displayName avatar')
+      .populate('session', 'title date location.name totalCatches catches._id catches.species catches.lengthCm')
       .populate('allowedGroups', 'name')
       .populate('responses.user', 'displayName avatar')
       .populate('comments.user', 'displayName avatar')
