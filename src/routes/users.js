@@ -1,4 +1,5 @@
 import User from '../models/User.js'
+import Session from '../models/Session.js'
 import { escapeRegExp } from '../utils/regex.js'
 
 export default async function userRoutes(app) {
@@ -28,6 +29,12 @@ export default async function userRoutes(app) {
   app.get('/:id', auth, async (req, reply) => {
     const user = await User.findById(req.params.id).select('displayName avatar createdAt').lean()
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
-    return user
+    // Statistiche pubbliche: solo uscite già visibili a tutti (visibility
+    // 'users', non nascoste), come nella classifica. Nessun dato privato.
+    const [agg] = await Session.aggregate([
+      { $match: { userId: user._id, visibility: 'users', hidden: false } },
+      { $group: { _id: null, sessionsCount: { $sum: 1 }, catchesCount: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
+    ])
+    return { ...user, stats: { sessionsCount: agg?.sessionsCount || 0, catchesCount: agg?.catchesCount || 0 } }
   })
 }
