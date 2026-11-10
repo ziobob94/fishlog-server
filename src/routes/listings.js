@@ -229,14 +229,16 @@ export default async function listingRoutes(app) {
 
     const user = await User.findById(req.user.sub).select('shop').lean()
 
-    // Solo i venditori verificati possono pubblicare annunci
-    if (user?.shop?.verificationStatus !== 'verified') {
-      return reply.status(403).send({ error: 'Per pubblicare annunci devi prima essere un venditore verificato', code: 'SELLER_NOT_VERIFIED' })
+    // Un negozio deve essere verificato; un privato può pubblicare subito,
+    // senza P.IVA né documenti.
+    const isShop = !!(user?.shop?.enabled && user.shop.sellerType !== 'privato')
+    if (isShop && user.shop.verificationStatus !== 'verified') {
+      return reply.status(403).send({ error: 'Per pubblicare come negozio devi prima essere verificato', code: 'SELLER_NOT_VERIFIED' })
     }
 
     const listing = await Listing.create({
       seller: req.user.sub,
-      sellerType: user.shop.enabled && user.shop.sellerType !== 'privato' ? 'negozio' : 'privato',
+      sellerType: isShop ? 'negozio' : 'privato',
       title, description, category, condition, price,
       currency: currency || 'EUR',
       location
