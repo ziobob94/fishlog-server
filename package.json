@@ -9,7 +9,8 @@
     "seed": "node scripts/seed.js seed",
     "seed:clean": "node scripts/seed.js clean",
     "seed:species": "node scripts/seedSpecies.js",
-    "import:species": "node scripts/importAllSpecies.js"
+    "import:species": "node scripts/importAllSpecies.js",
+    "backfill:zones": "node scripts/backfillLocationZones.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
