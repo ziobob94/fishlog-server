@@ -56,7 +56,7 @@ const omPanel = (lat, lng) => cached(`omp:${ck(lat, lng)}`, 15 * 60e3, () => get
 const omMarine = (lat, lng) => cached(`omm2:${ck(lat, lng)}`, 30 * 60e3, () => getJson(
   `${OM_MARINE}?latitude=${lat}&longitude=${lng}`
   + `&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction`
-  + `&hourly=wave_height,wave_period,sea_surface_temperature,sea_level_height_msl&forecast_days=2&timezone=auto`))
+  + `&hourly=wave_height,wave_period,sea_surface_temperature,sea_level_height_msl&daily=wave_height_max&forecast_days=7&timezone=auto`))
 
 // ── Costruzione risposta ──────────────────────────────────────────────────────
 function fromGoogle(c, hours, days, hist) {
@@ -106,7 +106,7 @@ function fromGoogle(c, hours, days, hist) {
   })
   const past = (hist?.historyHours || []).map(h => num(h.airPressure?.meanSeaLevelMillibars)).filter(v => v != null)
   const pressure3hAgo = past.length >= 3 ? past[Math.min(2, past.length - 1)] : null // storico: più recente per primo
-  return { cur, hourly, daily, pressure3hAgo }
+  return { cur, hourly, daily, pressure3hAgo, pressureHistory: past.slice().reverse() }
 }
 
 function fromOpenMeteo(om) {
@@ -143,11 +143,12 @@ function fromOpenMeteo(om) {
     visibilityKm: null, precipProbability: num(h.precipitation_probability?.[i0]), precipMm: num(c.precipitation),
   }
   const pressure3hAgo = i0 >= 3 ? num(h.surface_pressure?.[i0 - 3]) : null
-  return { cur, hourly, daily, pressure3hAgo }
+  const pressureHistory = (h.surface_pressure || []).slice(Math.max(0, i0 - 5), i0 + 1).filter(v => v != null)
+  return { cur, hourly, daily, pressure3hAgo, pressureHistory }
 }
 
 function buildMarine(m) {
-  const empty = { available: false, waveHeight: null, wavePeriod: null, waveDeg: null, swellHeight: null, swellPeriod: null, swellDeg: null, windWaveHeight: null, seaTemp: null, seaLevel: null, currentSpeed: null, currentDeg: null, tides: null }
+  const empty = { available: false, waveHeight: null, wavePeriod: null, waveDeg: null, swellHeight: null, swellPeriod: null, swellDeg: null, windWaveHeight: null, seaTemp: null, seaLevel: null, currentSpeed: null, currentDeg: null, tides: null, dailyWaveMax: [] }
   const c = m?.current
   if (!c) return empty
   const out = {
@@ -157,7 +158,8 @@ function buildMarine(m) {
     currentSpeed: num(c.ocean_current_velocity), currentDeg: num(c.ocean_current_direction),
   }
   const hh = m.hourly || {}
-  const series = (hh.time || []).map((time, i) => ({ time, h: num(hh.sea_level_height_msl?.[i]) }))
+  out.dailyWaveMax = (m.daily?.time || []).map((date, i) => ({ date, waveHeightMax: num(m.daily.wave_height_max?.[i]) }))
+  const series = (hh.time || []).slice(0, 48).map((time, i) => ({ time, h: num(hh.sea_level_height_msl?.[i]) }))
   const hasTide = series.some(s => s.h != null) && new Set(series.map(s => s.h)).size > 3
   out.tides = hasTide ? { approximate: true, series: series.filter(s => s.h != null).map(s => ({ time: s.time, height: s.h })), extremes: tideExtremes(series) } : null
   out.available = [out.waveHeight, out.wavePeriod, out.seaTemp].some(v => v != null)
@@ -181,7 +183,7 @@ export async function getOverview(lat, lng) {
         if (!w.hourly.length) w.hourly = om.hourly
         if (!w.daily.length) w.daily = om.daily
         else w.daily = w.daily.map((d, i) => ({ ...d, sunrise: d.sunrise ?? om.daily[i]?.sunrise ?? null, sunset: d.sunset ?? om.daily[i]?.sunset ?? null }))
-        if (w.pressure3hAgo == null) w.pressure3hAgo = om.pressure3hAgo
+        if (w.pressure3hAgo == null) { w.pressure3hAgo = om.pressure3hAgo; w.pressureHistory = om.pressureHistory }
         source = 'google+open-meteo'
       }
     }
@@ -201,7 +203,7 @@ export async function getOverview(lat, lng) {
       moon: { ...moon, googlePhase: today.moonPhase ?? null },
       sunrise: today.sunrise ?? null,
       sunset: today.sunset ?? null,
-      pressure: { value: w.cur?.pressure ?? null, ...(pressureTrend(w.cur?.pressure != null && w.pressure3hAgo != null ? w.cur.pressure - w.pressure3hAgo : null) || { trend: null, delta3h: null }) },
+      pressure: { value: w.cur?.pressure ?? null, history6h: w.pressureHistory || [], ...(pressureTrend(w.cur?.pressure != null && w.pressure3hAgo != null ? w.cur.pressure - w.pressure3hAgo : null) || { trend: null, delta3h: null }) },
     },
     sources: { weather: source, marine: marine.available ? 'open-meteo' : null },
   }

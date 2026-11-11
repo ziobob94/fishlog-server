@@ -7,7 +7,7 @@ export default async function weatherRoutes(app) {
   const auth = { preHandler: [app.authenticate], ...limit }
 
   const coords = (q) => {
-    const lat = Number(q.lat), lng = Number(q.lng)
+    const lat = Number(q.lat), lng = Number(q.lng ?? q.lon)
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null
     return { lat: Number(lat.toFixed(4)), lng: Number(lng.toFixed(4)) }
   }
@@ -29,10 +29,13 @@ export default async function weatherRoutes(app) {
   })
 
   // GET /api/weather/overview?lat&lng — pannello completo: attuale + 48 h + 7 giorni + mare + dati utili alla pesca
-  app.get('/overview', auth, async (req, reply) => {
+  // Alias GET /api/weather?lat&lon (nome usato nell'handoff di Design); accetta sia lng sia lon.
+  const overview = async (req, reply) => {
     const c = coords(req.query)
     if (!c) return reply.status(400).send({ error: 'Coordinate non valide' })
     try { return await getOverview(c.lat, c.lng) }
     catch (e) { return reply.status(e.status === 502 ? 502 : 500).send({ error: 'Meteo non disponibile, riprova tra poco' }) }
-  })
+  }
+  app.get('/overview', auth, overview)
+  app.get('/', auth, overview)
 }
