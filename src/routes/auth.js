@@ -161,8 +161,28 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { displayName, defaultVisibility } = req.body
+    const { displayName, defaultVisibility, username, bio, location } = req.body
     if (displayName !== undefined) user.displayName = displayName
+    if (bio !== undefined) {
+      if (typeof bio !== 'string' || bio.length > 150) return reply.status(400).send({ error: 'La bio può avere al massimo 150 caratteri' })
+      user.bio = bio.trim()
+    }
+    if (location !== undefined) {
+      const name = typeof location?.name === 'string' ? location.name.trim().slice(0, 80) : ''
+      user.location = { name, lat: Number.isFinite(location?.lat) ? location.lat : undefined, lng: Number.isFinite(location?.lng) ? location.lng : undefined }
+    }
+    if (username !== undefined) {
+      const uname = String(username || '').trim().toLowerCase()
+      if (uname) {
+        if (!/^[a-z0-9._]{3,30}$/.test(uname))
+          return reply.status(400).send({ error: 'Nome utente non valido: 3-30 caratteri tra lettere, numeri, punto e trattino basso' })
+        const taken = await User.exists({ username: uname, _id: { $ne: user._id } })
+        if (taken) return reply.status(409).send({ error: 'Nome utente già in uso' })
+        user.username = uname
+      } else {
+        user.username = undefined
+      }
+    }
     if (defaultVisibility !== undefined) {
       if (!['public', 'users', 'group', 'private'].includes(defaultVisibility))
         return reply.status(400).send({ error: 'Visibilità non valida' })
@@ -650,6 +670,9 @@ export default async function authRoutes(app) {
       email:             user.email,
       displayName:       user.displayName,
       avatar:            user.avatar,
+      username:          user.username || '',
+      bio:               user.bio || '',
+      location:          { name: user.location?.name || '', lat: user.location?.lat ?? null, lng: user.location?.lng ?? null },
       role:              user.role,
       defaultVisibility: user.defaultVisibility,
       notificationPreferences: {
