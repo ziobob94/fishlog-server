@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.28.0...server-v1.29.0) (2026-11-11)
+
+
+### Features
+
+* meteo ora per ora fino a 7 giorni e previsioni a 15 giorni (Google + Open-Meteo) ([6a90aff](https://github.com/ziobob94/fishlog-server/commit/6a90aff6cbc4ed430758571b031e129c2d08aeb7))
+
 # [1.28.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.27.0...server-v1.28.0) (2026-11-11)
 
 
