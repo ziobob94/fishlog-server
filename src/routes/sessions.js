@@ -178,7 +178,12 @@ export default async function sessionRoutes(app) {
       { $match: match },
       { $addFields: {
           catchesInSession: { $size: { $ifNull: ['$catches', []] } },
-          hasMedia: { $gt: [{ $size: { $ifNull: ['$media', []] } }, 0] }
+          // Foto/video dell'uscita o di una sua cattura (come in /rankings).
+          hasMedia: { $gt: [{ $add: [
+            { $size: { $ifNull: ['$media', []] } },
+            { $reduce: { input: { $ifNull: ['$catches', []] }, initialValue: 0,
+                in: { $add: ['$$value', { $size: { $ifNull: ['$$this.media', []] } }] } } }
+          ] }, 0] }
         }
       },
       { $group: {
