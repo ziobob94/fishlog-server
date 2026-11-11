@@ -1,3 +1,10 @@
+## [1.32.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.0...server-v1.32.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* attività dei pesci completa anche per le ore residue di oggi ([c315a2a](https://github.com/ziobob94/fishlog-server/commit/c315a2ad56830f20f1db64df36af787af0b18f67))
+
 # [1.32.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.31.1...server-v1.32.0) (2026-11-11)
 
 
