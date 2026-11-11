@@ -1,3 +1,11 @@
+# [1.31.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.30.0...server-v1.31.0) (2026-11-11)
+
+
+### Features
+
+* contatori nel profilo utente e filtro userId sulle uscite ([3ba6484](https://github.com/ziobob94/fishlog-server/commit/3ba64845eb617712eab4018f3eb911c11593ff22))
+* endpoint GET /users/:id/catches con classifica, record e totali ([321be6c](https://github.com/ziobob94/fishlog-server/commit/321be6cfa6b71f49ba4869e97866d49121d6bb60))
+
 # [1.30.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.1...server-v1.30.0) (2026-11-11)
 
 
