@@ -29,6 +29,23 @@ async function personalRecord(session) {
   return better.length ? null : { species: best.species, lengthCm: best.lengthCm }
 }
 
+// Inizio del periodo in fuso Europe/Rome (settimana da lunedì, mese e anno
+// di calendario): una classifica "Settimana" riparte il lunedì, non scorre.
+function periodStart(period, now = new Date()) {
+  if (period === 'all') return null
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome', year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23'
+  }).formatToParts(now).filter(p => p.type !== 'literal').map(p => [p.type, Number(p.value)]))
+  const romeAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
+  const offset = Math.round((romeAsUtc - now.getTime()) / 60000) * 60000
+  let y = parts.year, m = parts.month - 1, d = parts.day
+  if (period === 'week') d -= (new Date(Date.UTC(y, m, d)).getUTCDay() + 6) % 7
+  else if (period === 'month') d = 1
+  else if (period === 'year') { m = 0; d = 1 }
+  return new Date(Date.UTC(y, m, d) - offset)
+}
+
 export default async function sessionRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
@@ -147,10 +164,7 @@ export default async function sessionRoutes(app) {
   app.get('/leaderboard', auth, async (req) => {
     const { period = 'all' } = req.query
     const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
-    if (period === 'week' || period === 'month') {
-      const days = period === 'week' ? 7 : 30
-      match.date = { $gte: new Date(Date.now() - days * 86400000) }
-    }
+    if (period === 'week' || period === 'month') match.date = { $gte: periodStart(period) }
 
     const rows = await Session.aggregate([
       { $match: match },
@@ -180,7 +194,7 @@ export default async function sessionRoutes(app) {
       { $unwind: '$user' },
       { $project: {
           _id: 0, userId: '$_id', score: 1, sessionsCount: 1, catchesCount: 1,
-          displayName: '$user.displayName', avatar: '$user.avatar'
+          displayName: '$user.displayName', username: '$user.username', avatar: '$user.avatar'
         }
       }
     ])
@@ -204,7 +218,7 @@ export default async function sessionRoutes(app) {
     fight_shortest: { field: 'fightMinutes', dir: 1,  unit: 'min' }
   }
   const SCOPE_FIELDS = { country: 'location.country', region: 'location.region', province: 'location.province', municipality: 'location.municipality' }
-  const PERIOD_DAYS = { week: 7, month: 30, year: 365 }
+  const PERIODS = ['week', 'month', 'year']
 
   app.get('/rankings', auth, async (req, reply) => {
     const { type = 'longest', species, scope = 'world', place, period = 'all' } = req.query
@@ -212,10 +226,10 @@ export default async function sessionRoutes(app) {
     if (!isHours && !RANK_TYPES[type]) return reply.status(400).send({ error: 'Tipo di classifica non valido' })
     if (scope !== 'world' && !SCOPE_FIELDS[scope]) return reply.status(400).send({ error: 'Ambito non valido' })
     if (scope !== 'world' && !place) return reply.status(400).send({ error: 'Indica la zona (place)' })
-    if (period !== 'all' && !PERIOD_DAYS[period]) return reply.status(400).send({ error: 'Periodo non valido' })
+    if (period !== 'all' && !PERIODS.includes(period)) return reply.status(400).send({ error: 'Periodo non valido' })
 
     const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
-    if (PERIOD_DAYS[period]) match.date = { $gte: new Date(Date.now() - PERIOD_DAYS[period] * 86400000) }
+    if (period !== 'all') match.date = { $gte: periodStart(period) }
     if (scope !== 'world') match[SCOPE_FIELDS[scope]] = new RegExp(`^${escapeRegExp(String(place).trim())}$`, 'i')
 
     let rows
@@ -259,9 +273,9 @@ export default async function sessionRoutes(app) {
     const meIdx = rows.findIndex(r => String(r.userId) === String(req.user.sub))
     const top = rows.slice(0, 50)
     const ids = [...new Set([...top.map(r => String(r.userId)), ...(meIdx >= 50 ? [String(rows[meIdx].userId)] : [])])]
-    const users = await User.find({ _id: { $in: ids } }).select('displayName avatar').lean()
+    const users = await User.find({ _id: { $in: ids } }).select('displayName username avatar').lean()
     const byId = new Map(users.map(u => [String(u._id), u]))
-    const decorate = (r, i) => ({ ...r, position: i + 1, displayName: byId.get(String(r.userId))?.displayName, avatar: byId.get(String(r.userId))?.avatar })
+    const decorate = (r, i) => ({ ...r, position: i + 1, displayName: byId.get(String(r.userId))?.displayName, username: byId.get(String(r.userId))?.username, avatar: byId.get(String(r.userId))?.avatar })
     const data = top.map(decorate).filter(r => r.displayName)
     const me = meIdx >= 0 ? decorate(rows[meIdx], meIdx) : null
 
