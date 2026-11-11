@@ -2,7 +2,7 @@
 // Meteo: Google Weather (attuale, ore, giorni, storico 24 h per il trend della pressione) con ripiego Open-Meteo.
 // Mare: Open-Meteo Marine (gratuito). Fuori dalla copertura marina (lago, entroterra) i campi sono null e `marine.available` è false.
 // Fase lunare, illuminazione e trend pressione sono calcolati/derivati qui, così il client non ha logica.
-import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, gHistory } from './weather.js'
+import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, gHistory, googleQuota } from './weather.js'
 import { googleKey } from './weather.js'
 
 const H = 3600e3
@@ -202,6 +202,7 @@ export async function getOverview(reqLat, reqLng) {
       sunset: today.sunset ?? null,
       pressure: { value: w.cur?.pressure ?? null, history6h: w.pressureHistory || [], ...(pressureTrend(w.cur?.pressure != null && w.pressure3hAgo != null ? w.cur.pressure - w.pressure3hAgo : null) || { trend: null, delta3h: null }) },
     },
+    degraded: useG && googleQuota.isBlocked(), // quota Google al blocco: dati da cache o da ripiego
     sources: { weather: source, marine: marine.available ? 'open-meteo' : null },
   }
 }

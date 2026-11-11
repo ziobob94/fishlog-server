@@ -5,8 +5,7 @@
 //  - singoli campi mancanti nella risposta Google.
 // Il formato di risposta è lo stesso per entrambi i provider; `sources` dice da dove arriva ogni gruppo di campi.
 import AppConfig from '../config.js'
-import mongoose from 'mongoose'
-import RuntimeConfig from '../models/RuntimeConfig.js'
+import { createQuota } from './quota.js'
 
 const config = new AppConfig()
 const GW = 'https://weather.googleapis.com/v1'
@@ -34,47 +33,24 @@ export const cellOf = (lat, lng) => ({
   lng: Number((Math.round(lng / CELL) * CELL).toFixed(2)),
 })
 const cache = new Map()
-async function cached(key, ttlMs, fn) {
+async function cached(key, ttlMs, fn, opts = {}) {
   const hit = cache.get(key)
   if (hit && hit.exp > Date.now()) return hit.val
+  // Quota bloccata: meglio un dato scaduto (fino a 24 h) che nessuna chiamata a Google.
+  if (hit && opts.staleWhenBlocked && googleQuota.isBlocked()) return hit.val
   const val = fn()
   cache.set(key, { val, exp: Date.now() + ttlMs })
-  val.catch(() => { if (cache.get(key)?.val === val) cache.delete(key) })
-  if (cache.size > 800) for (const [k, v] of cache) if (v.exp < Date.now()) cache.delete(k)
+  val.catch(() => { if (cache.get(key)?.val === val) { if (hit && opts.staleWhenBlocked) cache.set(key, hit); else cache.delete(key) } })
+  if (cache.size > 800) for (const [k, v] of cache) if (v.exp + 24 * 3600e3 < Date.now()) cache.delete(k)
   return val
 }
 const ck = (lat, lng) => { const c = cellOf(lat, lng); return `${c.lat.toFixed(2)},${c.lng.toFixed(2)}` }
 
-// ── Contatore mensile delle chiamate a Google Weather ─────────────────────────
-// Quota gratuita: 10.000 richieste al mese. All'80% (soglia configurabile) le chiamate a Google si fermano e
-// meteo/previsioni passano al ripiego Open-Meteo fino al mese successivo; il conteggio è salvato su Mongo.
-const USAGE_KEY = 'usage.googleWeather'
-const usage = { month: '', count: 0, loaded: false, warned: false }
-const monthNow = () => new Date().toISOString().slice(0, 7)
-export const googleQuota = () => Number(process.env.GOOGLE_WEATHER_MONTHLY_QUOTA || config.get('google.weatherMonthlyQuota', 10000)) || 10000
-export const googleThreshold = () => Number(process.env.GOOGLE_WEATHER_QUOTA_THRESHOLD || config.get('google.weatherQuotaThreshold', 0.8)) || 0.8
-const dbUp = () => mongoose.connection.readyState === 1
-async function loadUsage() {
-  if (usage.loaded || !dbUp()) return
-  usage.loaded = true
-  try {
-    const row = await RuntimeConfig.findOne({ key: USAGE_KEY }).lean()
-    if (row?.value?.month === monthNow()) { usage.month = row.value.month; usage.count = Math.max(usage.count, row.value.count || 0) }
-  } catch { /* senza database il conteggio resta in memoria */ }
-}
-async function countGoogleCall() {
-  await loadUsage()
-  const m = monthNow()
-  if (usage.month !== m) { usage.month = m; usage.count = 0; usage.warned = false }
-  usage.count += 1
-  const limit = Math.floor(googleQuota() * googleThreshold())
-  if (usage.count >= limit && !usage.warned) {
-    usage.warned = true
-    console.warn(`[weather] Google Weather: ${usage.count}/${googleQuota()} richieste questo mese (soglia ${Math.round(googleThreshold() * 100)}%): passo al ripiego Open-Meteo fino a fine mese`)
-  }
-  if (dbUp()) RuntimeConfig.updateOne({ key: USAGE_KEY }, { $set: { value: { month: usage.month, count: usage.count } } }, { upsert: true }).catch(() => {})
-}
-export const googleUsage = () => ({ month: usage.month || monthNow(), count: usage.month === monthNow() ? usage.count : 0, quota: googleQuota(), limit: Math.floor(googleQuota() * googleThreshold()) })
+// ── Quota Google Weather ──────────────────────────────────────────────────────
+// 10.000 richieste gratuite al mese. Contatore persistente su Mongo, avvisi al 70% e 90%, blocco al 95%
+// (vedi utils/quota.js). Bloccato: niente chiamate a Google, si servono i dati ancora in cache (anche scaduti)
+// e per il resto il ripiego Open-Meteo; la risposta porta `degraded: true`.
+export const googleQuota = createQuota({ id: 'googleWeather', label: 'Google Weather API', envPrefix: 'GOOGLE_WEATHER', cfgPrefix: 'google' })
 
 // ── Mappature ─────────────────────────────────────────────────────────────────
 // Condizioni dell'app: sole | nuvoloso | coperto | nebbia | pioggia | vento
@@ -118,17 +94,15 @@ function gUrl(path, lat, lng, extra = '') {
 // Ogni chiamata usa il centro della cella (stessa risposta per tutti gli utenti della zona) e passa dal contatore:
 // sopra soglia lancia un errore 429 e il chiamante usa il ripiego Open-Meteo.
 async function gGet(path, lat, lng, extra) {
-  await loadUsage()
-  if (usage.month === monthNow() && usage.count >= Math.floor(googleQuota() * googleThreshold())) { const e = new Error('Quota Google Weather vicina al limite'); e.status = 429; throw e }
+  await googleQuota.reserve()   // lancia 429 se la quota è al limite di blocco
   const c = cellOf(lat, lng)
-  await countGoogleCall()
   return getJson(gUrl(path, c.lat, c.lng, extra))
 }
 // TTL scelti per la quota: l'attuale cambia di più, i giorni quasi mai.
-export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 15 * 60e3, () => gGet('currentConditions:lookup', lat, lng))
-export const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 3 * 3600e3, () => gGet('forecast/days:lookup', lat, lng, '&days=10&pageSize=10'))
-export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gGet('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240'))
-export const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 60 * 60e3, () => gGet('history/hours:lookup', lat, lng, '&hours=6&pageSize=6'))
+export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 15 * 60e3, () => gGet('currentConditions:lookup', lat, lng), { staleWhenBlocked: true })
+export const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 3 * 3600e3, () => gGet('forecast/days:lookup', lat, lng, '&days=10&pageSize=10'), { staleWhenBlocked: true })
+export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gGet('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240'), { staleWhenBlocked: true })
+export const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 60 * 60e3, () => gGet('history/hours:lookup', lat, lng, '&hours=6&pageSize=6'), { staleWhenBlocked: true })
 
 // ── Open-Meteo (ripiego e dati marini) ────────────────────────────────────────
 async function omDay(lat, lng, date) {

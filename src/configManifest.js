@@ -32,6 +32,11 @@ export const CONFIG_MANIFEST = [
   // Chiave SERVER per la Google Weather API (mai esposta al client; in alternativa env GOOGLE_WEATHER_KEY).
   // Restringerla per indirizzo IP del server e alla sola Weather API.
   { key: 'google.weatherKey', group: 'Google Weather', label: 'Chiave API Weather', type: 'string', secret: true },
+  // Quota: 10.000 richieste gratuite al mese. Avvisi (email agli admin + log) alle soglie indicate; al «blocco» le
+  // chiamate a Google si fermano e restano cache e ripiego Open-Meteo. Il contatore si azzera a ogni mese.
+  { key: 'google.weatherMonthlyQuota', group: 'Google Weather', label: 'Quota mensile (richieste)', type: 'number', secret: false },
+  { key: 'google.weatherAlertPcts',    group: 'Google Weather', label: 'Soglie di avviso in % (es. 70,90)', type: 'string', secret: false },
+  { key: 'google.weatherStopPct',      group: 'Google Weather', label: 'Blocco automatico al % della quota', type: 'number', secret: false },
 
   { key: 'features.passwordAuth', group: 'Feature flags', label: 'Login con email e password abilitato', type: 'boolean', secret: false },
 
