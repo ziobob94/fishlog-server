@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.27.0...server-v1.28.0) (2026-11-11)
+
+
+### Features
+
+* onda ora per ora (altezza e periodo, 48 h) in /api/weather ([14529fc](https://github.com/ziobob94/fishlog-server/commit/14529fcc105b29f0acb21d7c7f16d96ddfc03ce9))
+
 # [1.27.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.26.0...server-v1.27.0) (2026-11-11)
 
 
