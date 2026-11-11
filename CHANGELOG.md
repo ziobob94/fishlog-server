@@ -1,3 +1,10 @@
+## [1.29.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.0...server-v1.29.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* conteggio visualizzazioni storie ([082b241](https://github.com/ziobob94/fishlog-server/commit/082b241a94088ccf602443a6c057e87d421272dd))
+
 # [1.29.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.28.0...server-v1.29.0) (2026-11-11)
 
 
