@@ -53,6 +53,26 @@ La configurazione usa [`node-config`](https://www.npmjs.com/package/config), non
 | DELETE | `/api/media/:sessionId/:mediaId`      | Elimina singolo file         |
 | PATCH  | `/api/media/:sessionId/:mediaId/caption` | Aggiorna didascalia       |
 
+## Dati di test (seeder)
+
+Per provare l'app con dati realistici, senza dump:
+
+```bash
+npm run seed          # crea (o ricrea) i dati di test
+npm run seed:clean    # cancella solo i dati di test
+npm run seed:clean -- --dry-run   # mostra cosa verrebbe cancellato
+```
+
+Usa il database di `mongodb.url` (stessa config del server, serve `config/local.json`). Crea 8 utenti (due con lo stesso nome visualizzato «Mario Rossi», un negozio verificato, un admin), amicizie accettate e in attesa, 3 gruppi, ~50 uscite su mare e laghi italiani con coordinate reali (ultimi 7 giorni, 30 giorni, anno e storico, pubbliche/private/di gruppo, con catture, specie, peso, lunghezza e foto segnaposto), post ed evento nel Social, storie, 8 annunci Market (visibilità Tutti/Amici/Gruppi, stati diversi, visualizzazioni) e 3 chat con notifiche. Le uscite pubbliche alimentano la classifica per settimana/mese/anno.
+
+Al termine stampa le credenziali: **password `Test1234!` per tutti**, email `<username>@fishlog.test` (es. `mario.rossi@fishlog.test`).
+
+Sicurezza:
+- Ogni documento creato ha `seed: true` e le foto segnaposto in `uploads/` hanno prefisso `seed_`. `seed:clean` rimuove solo questi e ciò che gli utenti di test hanno creato dall'app (uscite, post, annunci, chat, ecc.); non tocca altri utenti né altri file.
+- `seed` è idempotente: ripulisce i propri dati precedenti prima di ricrearli, quindi rilanciarlo non duplica nulla. Si ferma se esiste un utente non-seed con le stesse email/username.
+- Rifiuta di girare con `NODE_ENV=production` salvo `--allow-production` (es. `npm run seed -- --allow-production`).
+- Le storie durano 24 ore (TTL): rilancia `npm run seed` per rigenerarle.
+
 ## Struttura
 ```
 src/
@@ -62,6 +82,7 @@ src/
   routes/
     sessions.js     — CRUD sessioni
     media.js        — upload e gestione media
+scripts/seed.js     — seeder dati di test (npm run seed / seed:clean)
 uploads/            — file caricati (ignorati da git)
 ```
 
