@@ -4,6 +4,12 @@ const LocationSchema = new mongoose.Schema({
   name:   { type: String, required: true },
   spot:   { type: String },
   region: { type: String },
+  // Zona amministrativa (da geocoding inverso delle coordinate), usata per le
+  // classifiche locali. Facoltativa: le uscite senza zona restano solo nelle
+  // classifiche globali.
+  municipality: { type: String },
+  province:     { type: String },
+  country:      { type: String },
   coords: {
     lat: { type: Number },
     lng: { type: Number }
@@ -52,6 +58,7 @@ const CatchSchema = new mongoose.Schema({
   weightKg: { type: Number },
   lengthCm: { type: Number },
   released: { type: Boolean, default: false },
+  fightMinutes: { type: Number, min: 0 },
   distance: { type: Number },
   direction: { type: String },
   time:     { type: String },
@@ -115,6 +122,7 @@ SessionSchema.index({ date: -1 })
 SessionSchema.index({ 'location.name': 1 })
 SessionSchema.index({ technique: 1 })
 SessionSchema.index({ userId: 1, date: -1 })
+SessionSchema.index({ visibility: 1, hidden: 1, 'location.country': 1, 'location.region': 1, 'location.province': 1, 'location.municipality': 1 })
 
 SessionSchema.pre('save', function (next) {
   this.totalCatches = this.catches?.length || 0

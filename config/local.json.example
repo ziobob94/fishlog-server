@@ -21,6 +21,10 @@
         "clientSecret": "your-ebay-client-secret",
         "sandbox": false
     },
+    "google": {
+        "_comment": "Chiave server per la Google Weather API (Cloud Console: abilita 'Weather API', restringi per IP). In alternativa variabile d'ambiente GOOGLE_WEATHER_KEY.",
+        "weatherKey": "your-google-weather-key"
+    },
     "mail": {
         "smtp": {
             "host": "smtp.example.com",

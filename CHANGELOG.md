@@ -1,3 +1,93 @@
+# [1.30.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.1...server-v1.30.0) (2026-11-11)
+
+
+### Bug Fixes
+
+* ordina le uscite dalla più recente anche a parità di data ([856be21](https://github.com/ziobob94/fishlog-server/commit/856be21e6ef62cfae014952620227d50931b4ee9))
+
+
+### Features
+
+* seeder di dati di test (npm run seed / seed:clean) ([9d129d6](https://github.com/ziobob94/fishlog-server/commit/9d129d6d21593236a0634d7e71552d2db19a655c))
+
+## [1.29.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.0...server-v1.29.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* conteggio visualizzazioni storie ([082b241](https://github.com/ziobob94/fishlog-server/commit/082b241a94088ccf602443a6c057e87d421272dd))
+
+# [1.29.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.28.0...server-v1.29.0) (2026-11-11)
+
+
+### Features
+
+* meteo ora per ora fino a 7 giorni e previsioni a 15 giorni (Google + Open-Meteo) ([6a90aff](https://github.com/ziobob94/fishlog-server/commit/6a90aff6cbc4ed430758571b031e129c2d08aeb7))
+
+# [1.28.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.27.0...server-v1.28.0) (2026-11-11)
+
+
+### Features
+
+* onda ora per ora (altezza e periodo, 48 h) in /api/weather ([14529fc](https://github.com/ziobob94/fishlog-server/commit/14529fcc105b29f0acb21d7c7f16d96ddfc03ce9))
+
+# [1.27.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.26.0...server-v1.27.0) (2026-11-11)
+
+
+### Features
+
+* avvisi e blocco automatico sulla quota Google Weather ([d0525a1](https://github.com/ziobob94/fishlog-server/commit/d0525a164022b064db17f18af79f10ee7d23b97c))
+* destinatario configurabile per gli avvisi di quota Google Weather ([7bf2e00](https://github.com/ziobob94/fishlog-server/commit/7bf2e006be3d5f635c7d2202ac4360bb5305538c))
+* endpoint /api/weather/overview con meteo, previsioni, mare e dati utili alla pesca ([32bd76a](https://github.com/ziobob94/fishlog-server/commit/32bd76a614decf89800c22a3c5dade9efdf8713e))
+* quota Google Weather (griglia 0,05°, TTL più lunghi, contatore mensile con soglia all'80%) ([8ff86db](https://github.com/ziobob94/fishlog-server/commit/8ff86dbddb3c146d0823ac39895a4554ce0b1542))
+* storico pressione 6 h, onda massima giornaliera e alias GET /api/weather?lat&lon ([257ab01](https://github.com/ziobob94/fishlog-server/commit/257ab013dd365bdbf770756f423c7f91d05891c9))
+
+# [1.26.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.25.0...server-v1.26.0) (2026-11-11)
+
+
+### Features
+
+* meteo da Google Weather API lato server (/api/weather), Open-Meteo solo per mare e ripiego ([6ecb627](https://github.com/ziobob94/fishlog-server/commit/6ecb627addcc537ce77a4a6705dcbe65487b2838))
+
+# [1.25.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.24.0...server-v1.25.0) (2026-11-11)
+
+
+### Features
+
+* visibilità annunci (tutti/amici/gruppi), contatto venditore opt-in, visualizzazioni uniche ([ce953cd](https://github.com/ziobob94/fishlog-server/commit/ce953cd59d02d7db472e6e8b809cc94d26580588))
+
+# [1.24.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.23.0...server-v1.24.0) (2026-11-10)
+
+
+### Features
+
+* **market:** i privati possono pubblicare senza verifica, solo i negozi richiedono la verifica ([55dc147](https://github.com/ziobob94/fishlog-server/commit/55dc147cce0bc2787c47e3460a3c3def5ced56c2))
+
+# [1.23.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.22.0...server-v1.23.0) (2026-11-10)
+
+
+### Features
+
+* logo del negozio, uscita collegata e cattura in evidenza nei post ([5812b12](https://github.com/ziobob94/fishlog-server/commit/5812b1209bcfd08841dd8a0b324c1d0607df0701))
+* **notifiche:** notifiche in app per mi piace e commenti ai post ([3f08ecd](https://github.com/ziobob94/fishlog-server/commit/3f08ecd994ca405ea1bcf60d9ab4fa983bf77769))
+
+# [1.22.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.21.0...server-v1.22.0) (2026-11-10)
+
+
+### Features
+
+* **shop:** upload del documento di verifica (privato) e visione admin; dati negozio non pubblici ([9f2c18a](https://github.com/ziobob94/fishlog-server/commit/9f2c18a83cda1fb06e31c178a876e16c1b099084))
+
+# [1.21.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.20.0...server-v1.21.0) (2026-11-09)
+
+
+### Features
+
+* **market:** pubblicare annunci richiede un venditore verificato ([9ff7649](https://github.com/ziobob94/fishlog-server/commit/9ff7649114722c2b70ed6831684a2a8a6de6d954))
+* **sessions:** filtro mine=true per elencare solo le proprie uscite ([5c41859](https://github.com/ziobob94/fishlog-server/commit/5c418590eca2858dde84229137943c41674e8059))
+* **shop:** dati venditore, motivo del rifiuto e richiesta sito per il negozio ([2ac1409](https://github.com/ziobob94/fishlog-server/commit/2ac1409aeba5cf33d964cd47d072d1d1f55ea48f))
+* **stats:** catture per mese (12 mesi) e specie più catturate in /sessions/stats ([6cd4770](https://github.com/ziobob94/fishlog-server/commit/6cd4770df51334753c426924399f72422b203338))
+
 # [1.20.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.19.0...server-v1.20.0) (2026-10-07)
 
 

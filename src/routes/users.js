@@ -1,7 +1,7 @@
+import mongoose from 'mongoose'
 import User from '../models/User.js'
 import Session from '../models/Session.js'
 import Friendship from '../models/Friendship.js'
-import mongoose from 'mongoose'
 import { escapeRegExp } from '../utils/regex.js'
 import { visibilityFilter } from '../utils/sessionAccess.js'
 import { userCatches, periodRange, SORTS } from '../utils/userCatches.js'
@@ -29,10 +29,22 @@ export default async function userRoutes(app) {
     return { data: users }
   })
 
+  // GET /api/users/me/stats — numeri della propria bacheca (uscite, catture, amici).
+  // Definita prima di /:id per non essere scambiata per un id.
+  app.get('/me/stats', auth, async (req) => {
+    const userId = new mongoose.Types.ObjectId(req.user.sub)
+    const [agg] = await Session.aggregate([
+      { $match: { userId, hidden: { $ne: true } } },
+      { $group: { _id: null, sessionsCount: { $sum: 1 }, catchesCount: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
+    ])
+    const friendsCount = await Friendship.countDocuments({ status: 'accepted', $or: [{ requester: userId }, { recipient: userId }] })
+    return { sessionsCount: agg?.sessionsCount || 0, catchesCount: agg?.catchesCount || 0, friendsCount }
+  })
+
   // GET /api/users/:id — profilo pubblico di un altro utente
   app.get('/:id', auth, async (req, reply) => {
     if (!mongoose.isValidObjectId(req.params.id)) return reply.status(404).send({ error: 'Utente non trovato' })
-    const user = await User.findById(req.params.id).select('displayName avatar createdAt').lean()
+    const user = await User.findById(req.params.id).select('displayName avatar username bio location createdAt').lean()
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
     // Contatori del profilo: uscite visibili a chi guarda, catture in quelle uscite, amici.
@@ -47,7 +59,12 @@ export default async function userRoutes(app) {
         $or: [{ requester: req.params.id }, { recipient: req.params.id }]
       })
     ])
-    return { ...user, counts: { sessions: sess[0]?.sessions || 0, catches: sess[0]?.catches || 0, friends: friendsCount } }
+    // `stats` (solo uscite pubbliche) è quello già usato dal profilo; `counts` segue la visibilità di chi guarda.
+    const [pub] = await Session.aggregate([
+      { $match: { userId: user._id, visibility: 'users', hidden: false } },
+      { $group: { _id: null, sessionsCount: { $sum: 1 }, catchesCount: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
+    ])
+    return { ...user, stats: { sessionsCount: pub?.sessionsCount || 0, catchesCount: pub?.catchesCount || 0 }, counts: { sessions: sess[0]?.sessions || 0, catches: sess[0]?.catches || 0, friends: friendsCount } }
   })
 
   // GET /api/users/:id/catches?sort=weight|length|species&species=&period=all|30d|YYYY&page=

@@ -5,6 +5,10 @@ import AppConfig from '../config.js'
 import { reloadRuntimeConfig } from '../runtimeConfigStore.js'
 import { CONFIG_MANIFEST, CONFIG_MANIFEST_BY_KEY } from '../configManifest.js'
 import { escapeRegExp } from '../utils/regex.js'
+import { shopDocsDir } from './auth.js'
+import { googleQuota } from '../utils/weather.js'
+import fs from 'node:fs'
+import path from 'node:path'
 
 const cfg = new AppConfig()
 
@@ -58,6 +62,19 @@ export default async function adminRoutes(app) {
     return { data }
   })
 
+  // GET /api/admin/shops/:id/document — documento di verifica caricato dal venditore
+  app.get('/shops/:id/document', adminOnly, async (req, reply) => {
+    const user = await User.findById(req.params.id).select('shop.document').lean()
+    const doc = user?.shop?.document
+    if (!doc?.filename) return reply.status(404).send({ error: 'Documento non trovato' })
+    const file = path.join(shopDocsDir(), path.basename(doc.filename))
+    if (!fs.existsSync(file)) return reply.status(404).send({ error: 'Documento non trovato' })
+    reply.header('Content-Type', doc.mimetype || 'application/octet-stream')
+    reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.originalName || doc.filename)}"`)
+    reply.header('Cache-Control', 'private, no-store')
+    return reply.send(fs.createReadStream(file))
+  })
+
   // POST /api/admin/shops/:id/approve
   app.post('/shops/:id/approve', adminOnly, async (req, reply) => {
     const user = await User.findById(req.params.id)
@@ -65,6 +82,7 @@ export default async function adminRoutes(app) {
 
     user.shop.verificationStatus = 'verified'
     user.shop.verifiedAt = new Date()
+    user.shop.rejectionReason = ''
     await user.save()
     return user.sanitize()
   })
@@ -76,6 +94,7 @@ export default async function adminRoutes(app) {
 
     user.shop.verificationStatus = 'rejected'
     user.shop.enabled = false
+    user.shop.rejectionReason = (req.body?.reason || '').toString().slice(0, 500)
     await user.save()
     return user.sanitize()
   })
@@ -88,13 +107,16 @@ export default async function adminRoutes(app) {
     if (hidden !== undefined) filter.hidden = hidden === 'true'
 
     const [sessions, total] = await Promise.all([
-      Session.find(filter).sort({ date: -1 })
+      Session.find(filter).sort({ date: -1, startTime: -1, createdAt: -1 })
         .skip((parseInt(page) - 1) * parseInt(limit)).limit(parseInt(limit))
         .populate('userId', 'displayName email').lean(),
       Session.countDocuments(filter)
     ])
     return { data: sessions, pagination: { page: parseInt(page), total, pages: Math.ceil(total / parseInt(limit)) } }
   })
+
+  // GET /api/admin/weather-usage — consumo mensile Google Weather: conteggio, soglie, blocco, avvisi già scattati
+  app.get('/weather-usage', adminOnly, async () => googleQuota.status())
 
   // GET /api/admin/config — configurazioni modificabili da interfaccia
   // (eBay, OAuth, SMTP, feature flag...). I valori "secret" non vengono mai

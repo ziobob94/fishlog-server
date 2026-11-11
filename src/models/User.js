@@ -7,12 +7,19 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String },
   displayName:  { type: String },
   avatar:       { type: String },
+  // Profilo pubblico (bacheca): nome utente univoco, bio breve e luogo.
+  username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true, match: /^[a-z0-9._]{3,30}$/ },
+  bio:          { type: String, trim: true, maxlength: 150 },
+  location:     { name: { type: String, trim: true, maxlength: 80 }, lat: Number, lng: Number },
   providers: {
     google:   { id: String },
     facebook: { id: String }
   },
 
   role: { type: String, enum: ['user', 'moderator', 'admin'], default: 'user' },
+
+  // Post salvati (segnalibro): privati, visibili solo al proprietario.
+  savedPosts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Post' }],
 
   defaultVisibility: { type: String, enum: ['public', 'users', 'group', 'private'], default: 'public' },
 
@@ -27,8 +34,28 @@ const UserSchema = new mongoose.Schema({
     description:         { type: String, trim: true },
     verificationStatus:  { type: String, enum: ['none', 'pending', 'verified', 'rejected'], default: 'none' },
     verificationRequestedAt: { type: Date },
-    verifiedAt:          { type: Date }
+    verifiedAt:          { type: Date },
+    // Percorso venditore: tipo di venditore e dati dell'attività (ragione
+    // sociale e P.IVA diventano di sola lettura una volta verificati).
+    sellerType:          { type: String, enum: ['privato', 'negozio'], default: 'negozio' },
+    legalName:           { type: String, trim: true },
+    vatNumber:           { type: String, trim: true },
+    city:                { type: String, trim: true },
+    phone:               { type: String, trim: true },
+    website:             { type: String, trim: true },
+    delivery:            [{ type: String, enum: ['ritiro', 'spedizione'] }],
+    contact:             { type: String, trim: true },
+    rejectionReason:     { type: String, trim: true },
+    // Documento di verifica (visura, ecc.): salvato fuori da /uploads, non pubblico
+    logo:                { type: String },
+    document:            { filename: String, originalName: String, mimetype: String, uploadedAt: Date },
+    // Richiesta (facoltativa) di un sito per il negozio, gestita a parte
+    siteRequest:         { requested: { type: Boolean, default: false }, at: { type: Date } }
   },
+
+  // Privacy del market: se true (default) chi non è amico può scrivere al venditore
+  // a proposito dei suoi annunci pubblici (visibilità «tutti»).
+  marketMessagesFromStrangers: { type: Boolean, default: true },
 
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
   // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.

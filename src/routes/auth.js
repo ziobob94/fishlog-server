@@ -34,6 +34,18 @@ const AVATAR_MIME = {
   'image/webp': '.webp'
 }
 
+const SHOP_DOC_MIME = {
+  'application/pdf': '.pdf',
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp'
+}
+
+// I documenti di verifica NON stanno sotto /uploads (servita pubblicamente)
+export function shopDocsDir() {
+  return path.resolve(cfg.get('app.dirs.uploads'), '..', 'private-docs', 'shops')
+}
+
 function uploadsDir() {
   return path.resolve(cfg.get('app.dirs.uploads'))
 }
@@ -112,7 +124,7 @@ export default async function authRoutes(app) {
 
     const user = new User({
       email: normalizedEmail,
-      displayName: isNonEmptyString(displayName) ? displayName : normalizedEmail.split('@')[0],
+      displayName: (typeof displayName === 'string' && displayName.trim()) ? displayName.trim().slice(0, 60) : normalizedEmail.split('@')[0],
       acceptedTermsAt: new Date(),
       acceptedTermsVersion: TERMS_VERSION
     })
@@ -149,8 +161,33 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { displayName, defaultVisibility } = req.body
-    if (displayName !== undefined) user.displayName = displayName
+    const { displayName, defaultVisibility, username, bio, location, marketMessagesFromStrangers } = req.body
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string' || !displayName.trim() || displayName.trim().length > 60)
+        return reply.status(400).send({ error: 'Nome non valido (1-60 caratteri)' })
+      user.displayName = displayName.trim()
+    }
+    if (bio !== undefined) {
+      if (typeof bio !== 'string' || bio.length > 150) return reply.status(400).send({ error: 'La bio può avere al massimo 150 caratteri' })
+      user.bio = bio.trim()
+    }
+    if (location !== undefined) {
+      const name = typeof location?.name === 'string' ? location.name.trim().slice(0, 80) : ''
+      user.location = { name, lat: Number.isFinite(location?.lat) ? location.lat : undefined, lng: Number.isFinite(location?.lng) ? location.lng : undefined }
+    }
+    if (username !== undefined) {
+      const uname = String(username || '').trim().toLowerCase()
+      if (uname) {
+        if (!/^[a-z0-9._]{3,30}$/.test(uname))
+          return reply.status(400).send({ error: 'Nome utente non valido: 3-30 caratteri tra lettere, numeri, punto e trattino basso' })
+        const taken = await User.exists({ username: uname, _id: { $ne: user._id } })
+        if (taken) return reply.status(409).send({ error: 'Nome utente già in uso' })
+        user.username = uname
+      } else {
+        user.username = undefined
+      }
+    }
+    if (marketMessagesFromStrangers !== undefined) user.marketMessagesFromStrangers = !!marketMessagesFromStrangers
     if (defaultVisibility !== undefined) {
       if (!['public', 'users', 'group', 'private'].includes(defaultVisibility))
         return reply.status(400).send({ error: 'Visibilità non valida' })
@@ -165,19 +202,107 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { enabled, name, description } = req.body
-    // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
-    // in coda di revisione: solo l'admin può portarla a "verified".
-    if (enabled !== undefined) {
-      user.shop.enabled = !!enabled
-      if (enabled && ['none', 'rejected'].includes(user.shop.verificationStatus)) {
-        user.shop.verificationStatus = 'pending'
-        user.shop.verificationRequestedAt = new Date()
+    const { enabled, name, description, sellerType, legalName, vatNumber, city, phone, website, delivery, contact } = req.body
+    const locked = user.shop.verificationStatus === 'verified'
+    // Un venditore privato non ha vetrina né verifica: può pubblicare subito.
+    // Passare a «privato» azzera una richiesta negozio in corso (non una già verificata).
+    if (sellerType === 'privato' && !locked) {
+      user.shop.sellerType = 'privato'
+      user.shop.enabled = false
+      user.shop.verificationStatus = 'none'
+    } else {
+      // Attivare per la prima volta (o dopo un rifiuto) rimette la richiesta
+      // in coda di revisione: solo l'admin può portarla a "verified".
+      if (enabled !== undefined) {
+        user.shop.enabled = !!enabled
+        if (enabled && ['none', 'rejected'].includes(user.shop.verificationStatus)) {
+          user.shop.verificationStatus = 'pending'
+          user.shop.verificationRequestedAt = new Date()
+        }
       }
     }
     if (name !== undefined)        user.shop.name = name
     if (description !== undefined) user.shop.description = description
+    if (sellerType === 'negozio') user.shop.sellerType = sellerType
+    // Ragione sociale e P.IVA verificate non si cambiano più
+    if (!locked) {
+      if (legalName !== undefined) user.shop.legalName = legalName
+      if (vatNumber !== undefined) user.shop.vatNumber = vatNumber
+    }
+    if (city !== undefined)    user.shop.city = city
+    if (phone !== undefined)   user.shop.phone = phone
+    if (website !== undefined) user.shop.website = website
+    if (contact !== undefined) user.shop.contact = contact
+    if (Array.isArray(delivery)) user.shop.delivery = delivery.filter(d => ['ritiro', 'spedizione'].includes(d))
 
+    await user.save()
+    return publicUser(user)
+  })
+
+  // Logo del negozio (pubblico, come l'avatar)
+  app.post('/me/shop/logo', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const part = await req.file({ limits: { fileSize: 5 * 1024 * 1024 } })
+    if (!part) return reply.status(400).send({ error: 'Nessun file ricevuto' })
+    const ext = AVATAR_MIME[part.mimetype]
+    if (!ext) return reply.status(400).send({ error: 'Formato non supportato (JPG, PNG, WEBP)' })
+
+    let buffer
+    try { buffer = await part.toBuffer() } catch {
+      return reply.status(413).send({ error: 'File troppo grande (massimo 5 MB)' })
+    }
+    await fs.mkdir(uploadsDir(), { recursive: true })
+    const filename = `shoplogo_${nanoid()}_${Date.now()}${ext}`
+    await fs.writeFile(path.join(uploadsDir(), filename), buffer)
+
+    user.shop.logo = `${req.protocol}://${req.headers.host}/uploads/${filename}`
+    await user.save()
+    return publicUser(user)
+  })
+
+  // Documento per la verifica (PDF o foto): lo vede solo il team (admin)
+  app.post('/me/shop/document', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const part = await req.file({ limits: { fileSize: 10 * 1024 * 1024 } })
+    if (!part) return reply.status(400).send({ error: 'Nessun file ricevuto' })
+    const ext = SHOP_DOC_MIME[part.mimetype]
+    if (!ext) return reply.status(400).send({ error: 'Formato non supportato (PDF, JPG, PNG, WEBP)' })
+
+    let buffer
+    try { buffer = await part.toBuffer() } catch {
+      return reply.status(413).send({ error: 'File troppo grande (massimo 10 MB)' })
+    }
+
+    await fs.mkdir(shopDocsDir(), { recursive: true })
+    const filename = `${user._id}-${Date.now()}${ext}`
+    await fs.writeFile(path.join(shopDocsDir(), filename), buffer)
+
+    // Sostituisce l'eventuale documento precedente
+    const old = user.shop.document?.filename
+    if (old) await fs.unlink(path.join(shopDocsDir(), path.basename(old))).catch(() => {})
+
+    user.shop.document = {
+      filename,
+      originalName: (part.filename || '').slice(0, 120),
+      mimetype: part.mimetype,
+      uploadedAt: new Date()
+    }
+    await user.save()
+    return publicUser(user)
+  })
+
+  // Richiesta di contatto per la realizzazione del sito del negozio
+  app.post('/me/shop/site-request', { preHandler: [app.authenticate] }, async (req, reply) => {
+    const user = await User.findById(req.user.sub)
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+    if (user.shop.verificationStatus !== 'verified') {
+      return reply.status(403).send({ error: 'Negozio non ancora verificato' })
+    }
+    user.shop.siteRequest = { requested: !!req.body?.requested, at: new Date() }
     await user.save()
     return publicUser(user)
   })
@@ -550,8 +675,12 @@ export default async function authRoutes(app) {
       email:             user.email,
       displayName:       user.displayName,
       avatar:            user.avatar,
+      username:          user.username || '',
+      bio:               user.bio || '',
+      location:          { name: user.location?.name || '', lat: user.location?.lat ?? null, lng: user.location?.lng ?? null },
       role:              user.role,
       defaultVisibility: user.defaultVisibility,
+      marketMessagesFromStrangers: user.marketMessagesFromStrangers !== false,
       notificationPreferences: {
         emailChatMessages:   user.notificationPreferences?.emailChatMessages   !== false,
         emailComments:       user.notificationPreferences?.emailComments       !== false,
@@ -567,9 +696,23 @@ export default async function authRoutes(app) {
       pendingEmail:      user.pendingEmail || null,
       shop: {
         enabled:            !!user.shop?.enabled,
+        // Può pubblicare annunci: un privato sempre, un negozio solo se verificato
+        canPublish:         !(user.shop?.enabled && user.shop?.sellerType !== 'privato') || user.shop?.verificationStatus === 'verified',
         name:               user.shop?.name || '',
         description:        user.shop?.description || '',
-        verificationStatus: user.shop?.verificationStatus || 'none'
+        verificationStatus: user.shop?.verificationStatus || 'none',
+        sellerType:         user.shop?.sellerType || 'negozio',
+        legalName:          user.shop?.legalName || '',
+        vatNumber:          user.shop?.vatNumber || '',
+        city:               user.shop?.city || '',
+        phone:              user.shop?.phone || '',
+        website:            user.shop?.website || '',
+        delivery:           user.shop?.delivery || [],
+        contact:            user.shop?.contact || '',
+        rejectionReason:    user.shop?.rejectionReason || '',
+        logo:               user.shop?.logo || '',
+        documentUploaded:   !!user.shop?.document?.filename,
+        siteRequested:      !!user.shop?.siteRequest?.requested
       },
       providers:         { google: !!user.providers?.google?.id, facebook: !!user.providers?.facebook?.id }
     }
