@@ -1,3 +1,14 @@
+# [1.27.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.26.0...server-v1.27.0) (2026-11-11)
+
+
+### Features
+
+* avvisi e blocco automatico sulla quota Google Weather ([d0525a1](https://github.com/ziobob94/fishlog-server/commit/d0525a164022b064db17f18af79f10ee7d23b97c))
+* destinatario configurabile per gli avvisi di quota Google Weather ([7bf2e00](https://github.com/ziobob94/fishlog-server/commit/7bf2e006be3d5f635c7d2202ac4360bb5305538c))
+* endpoint /api/weather/overview con meteo, previsioni, mare e dati utili alla pesca ([32bd76a](https://github.com/ziobob94/fishlog-server/commit/32bd76a614decf89800c22a3c5dade9efdf8713e))
+* quota Google Weather (griglia 0,05°, TTL più lunghi, contatore mensile con soglia all'80%) ([8ff86db](https://github.com/ziobob94/fishlog-server/commit/8ff86dbddb3c146d0823ac39895a4554ce0b1542))
+* storico pressione 6 h, onda massima giornaliera e alias GET /api/weather?lat&lon ([257ab01](https://github.com/ziobob94/fishlog-server/commit/257ab013dd365bdbf770756f423c7f91d05891c9))
+
 # [1.26.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.25.0...server-v1.26.0) (2026-11-11)
 
 
