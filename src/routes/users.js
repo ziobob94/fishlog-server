@@ -32,7 +32,7 @@ export default async function userRoutes(app) {
   app.get('/me/stats', auth, async (req) => {
     const userId = new mongoose.Types.ObjectId(req.user.sub)
     const [agg] = await Session.aggregate([
-      { $match: { userId } },
+      { $match: { userId, hidden: { $ne: true } } },
       { $group: { _id: null, sessionsCount: { $sum: 1 }, catchesCount: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
     ])
     const friendsCount = await Friendship.countDocuments({ status: 'accepted', $or: [{ requester: userId }, { recipient: userId }] })
