@@ -2,7 +2,7 @@
 // Meteo: Google Weather (attuale, ore, giorni, storico 24 h per il trend della pressione) con ripiego Open-Meteo.
 // Mare: Open-Meteo Marine (gratuito). Fuori dalla copertura marina (lago, entroterra) i campi sono null e `marine.available` è false.
 // Fase lunare, illuminazione e trend pressione sono calcolati/derivati qui, così il client non ha logica.
-import { cached, getJson, gUrl, num, kmh, ymd, pick, settle, ck, gCondition, omCondition, OM, OM_MARINE } from './weather.js'
+import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, gHistory } from './weather.js'
 import { googleKey } from './weather.js'
 
 const H = 3600e3
@@ -42,10 +42,6 @@ export function tideExtremes(series) {
 }
 
 // ── Fonti ─────────────────────────────────────────────────────────────────────
-const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 20 * 60e3, () => getJson(gUrl('history/hours:lookup', lat, lng, '&hours=6&pageSize=6')))
-const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 10 * 60e3, () => getJson(gUrl('currentConditions:lookup', lat, lng)))
-const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 30 * 60e3, () => getJson(gUrl('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240')))
-const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 30 * 60e3, () => getJson(gUrl('forecast/days:lookup', lat, lng, '&days=10&pageSize=10')))
 
 const omPanel = (lat, lng) => cached(`omp:${ck(lat, lng)}`, 15 * 60e3, () => getJson(
   `${OM}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day`
@@ -166,7 +162,8 @@ function buildMarine(m) {
   return out.available ? out : empty
 }
 
-export async function getOverview(lat, lng) {
+export async function getOverview(reqLat, reqLng) {
+  const { lat, lng } = cellOf(reqLat, reqLng) // griglia 0,05°: risposta condivisa tra utenti vicini
   const useG = !!googleKey()
   const [gc, gh, gd, ghist, marineRaw] = await Promise.all([
     useG ? settle(gCurrent(lat, lng)) : null, useG ? settle(gHours(lat, lng)) : null,
@@ -193,7 +190,7 @@ export async function getOverview(lat, lng) {
   const today = w.daily[0] || {}
   const moon = moonPhase()
   return {
-    location: { lat, lng },
+    location: { lat: reqLat, lng: reqLng },
     updatedAt: new Date().toISOString(),
     current: w.cur,
     hourly: w.hourly,
