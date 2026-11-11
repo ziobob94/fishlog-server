@@ -101,7 +101,22 @@ async function gGet(path, lat, lng, extra) {
 // TTL scelti per la quota: l'attuale cambia di più, i giorni quasi mai.
 export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 15 * 60e3, () => gGet('currentConditions:lookup', lat, lng), { staleWhenBlocked: true })
 export const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 3 * 3600e3, () => gGet('forecast/days:lookup', lat, lng, '&days=10&pageSize=10'), { staleWhenBlocked: true })
-export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gGet('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240'), { staleWhenBlocked: true })
+// forecast/hours accetta al massimo 24 ore per pagina (pageSize 1-24) e 240 ore in tutto: ogni pagina è una richiesta a quota.
+// Ne chiediamo 48 (2 pagine); le ore successive arrivano da Open-Meteo (gratis). Se la seconda pagina fallisce teniamo la prima.
+async function gHoursPaged(lat, lng) {
+  const all = []
+  let token = ''
+  for (let i = 0; i < 2; i++) {
+    let j
+    try { j = await gGet('forecast/hours:lookup', lat, lng, `&hours=48&pageSize=24${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`) }
+    catch (e) { if (i === 0) throw e; break }
+    all.push(...(j.forecastHours || []))
+    token = j.nextPageToken
+    if (!token) break
+  }
+  return { forecastHours: all }
+}
+export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gHoursPaged(lat, lng), { staleWhenBlocked: true })
 export const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 60 * 60e3, () => gGet('history/hours:lookup', lat, lng, '&hours=6&pageSize=6'), { staleWhenBlocked: true })
 
 // ── Open-Meteo (ripiego e dati marini) ────────────────────────────────────────
