@@ -7,7 +7,8 @@
     "staging": "cross-env NODE_ENV=staging && node src/index.js",
     "start": "cross-env NODE_ENV=production && node src/index.js",
     "seed:species": "node scripts/seedSpecies.js",
-    "import:species": "node scripts/importAllSpecies.js"
+    "import:species": "node scripts/importAllSpecies.js",
+    "backfill:zones": "node scripts/backfillLocationZones.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
