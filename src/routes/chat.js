@@ -200,10 +200,15 @@ export default async function chatRoutes(app) {
     const userId = req.user.sub
     const otherId = req.params.userId
     if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
-    if (!await canContact(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici, oppure se il venditore accetta messaggi sui suoi annunci pubblici' })
 
+    // Una conversazione già esistente si apre sempre (es. il venditore che ha
+    // ricevuto un messaggio da un acquirente non amico): il permesso serve
+    // solo per iniziarne una nuova.
     let conversation = await findDirectConversation(userId, otherId)
-    if (!conversation) conversation = await new Conversation({ type: 'direct', participants: [userId, otherId] }).save()
+    if (!conversation) {
+      if (!await canContact(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici, oppure se il venditore accetta messaggi sui suoi annunci pubblici' })
+      conversation = await new Conversation({ type: 'direct', participants: [userId, otherId] }).save()
+    }
 
     return { _id: conversation._id }
   })
