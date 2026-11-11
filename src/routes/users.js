@@ -1,5 +1,7 @@
+import mongoose from 'mongoose'
 import User from '../models/User.js'
 import Session from '../models/Session.js'
+import Friendship from '../models/Friendship.js'
 import { escapeRegExp } from '../utils/regex.js'
 
 export default async function userRoutes(app) {
@@ -25,9 +27,21 @@ export default async function userRoutes(app) {
     return { data: users }
   })
 
+  // GET /api/users/me/stats — numeri della propria bacheca (uscite, catture, amici).
+  // Definita prima di /:id per non essere scambiata per un id.
+  app.get('/me/stats', auth, async (req) => {
+    const userId = new mongoose.Types.ObjectId(req.user.sub)
+    const [agg] = await Session.aggregate([
+      { $match: { userId, hidden: { $ne: true } } },
+      { $group: { _id: null, sessionsCount: { $sum: 1 }, catchesCount: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
+    ])
+    const friendsCount = await Friendship.countDocuments({ status: 'accepted', $or: [{ requester: userId }, { recipient: userId }] })
+    return { sessionsCount: agg?.sessionsCount || 0, catchesCount: agg?.catchesCount || 0, friendsCount }
+  })
+
   // GET /api/users/:id — profilo pubblico di un altro utente
   app.get('/:id', auth, async (req, reply) => {
-    const user = await User.findById(req.params.id).select('displayName avatar createdAt').lean()
+    const user = await User.findById(req.params.id).select('displayName avatar username bio location createdAt').lean()
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
     // Statistiche pubbliche: solo uscite già visibili a tutti (visibility
     // 'users', non nascoste), come nella classifica. Nessun dato privato.

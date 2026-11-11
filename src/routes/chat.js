@@ -5,6 +5,7 @@ import Conversation from '../models/Conversation.js'
 import Message from '../models/Message.js'
 import Friendship from '../models/Friendship.js'
 import User from '../models/User.js'
+import Listing from '../models/Listing.js'
 import Notification from '../models/Notification.js'
 import AppConfig from '../config.js'
 import { sendMail, newChatMessageEmail } from '../utils/mailer.js'
@@ -37,6 +38,15 @@ function previewFor(message) {
   if (message.type === 'location') return '📍 Posizione'
   if (message.type === 'file') return `📎 ${message.media?.originalName || 'File'}`
   return 'Nuovo messaggio'
+}
+
+// Amici, oppure venditore con almeno un annuncio pubblico attivo che ha
+// abilitato (Privacy) i messaggi da persone esterne.
+async function canContact(userId, otherId) {
+  if (await areFriends(userId, otherId)) return true
+  const other = await User.findById(otherId).select('marketMessagesFromStrangers').lean()
+  if (!other || other.marketMessagesFromStrangers === false) return false
+  return !!(await Listing.exists({ seller: otherId, status: { $in: ['active', 'reserved'] }, visibility: { $in: ['all', null] } }))
 }
 
 async function areFriends(userA, userB) {
@@ -190,7 +200,7 @@ export default async function chatRoutes(app) {
     const userId = req.user.sub
     const otherId = req.params.userId
     if (otherId === userId) return reply.status(400).send({ error: 'Non puoi scrivere a te stesso' })
-    if (!await areFriends(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici' })
+    if (!await canContact(userId, otherId)) return reply.status(403).send({ error: 'Potete scrivervi solo se siete amici, oppure se il venditore accetta messaggi sui suoi annunci pubblici' })
 
     let conversation = await findDirectConversation(userId, otherId)
     if (!conversation) conversation = await new Conversation({ type: 'direct', participants: [userId, otherId] }).save()

@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import mongoose from 'mongoose'
 import Session from '../models/Session.js'
+import User from '../models/User.js'
 import { visibilityFilter, canEdit, canModerate } from '../utils/sessionAccess.js'
 import { escapeRegExp } from '../utils/regex.js'
 
@@ -11,6 +12,40 @@ import { escapeRegExp } from '../utils/regex.js'
 // quando l'utente sceglie un'esca standard.
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BAIT_CATALOG = JSON.parse(readFileSync(path.join(__dirname, '../data/baits.json'), 'utf-8'))
+
+// Record personale: la cattura più lunga dell'uscita è la più lunga di quella
+// specie tra tutte le uscite dell'autore (a parità vale la prima in ordine di
+// data). Restituisce { species, lengthCm } oppure null.
+async function personalRecord(session) {
+  const best = (session.catches || []).filter(c => c.species && Number(c.lengthCm) > 0)
+    .sort((a, b) => b.lengthCm - a.lengthCm)[0]
+  if (!best || !session.userId) return null
+  const better = await Session.aggregate([
+    { $match: { userId: session.userId, hidden: { $ne: true }, _id: { $ne: session._id } } },
+    { $unwind: '$catches' },
+    { $match: { 'catches.species': best.species, 'catches.lengthCm': { $gte: best.lengthCm } } },
+    { $match: { $or: [{ 'catches.lengthCm': { $gt: best.lengthCm } }, { date: { $lt: session.date } }] } },
+    { $limit: 1 }
+  ])
+  return better.length ? null : { species: best.species, lengthCm: best.lengthCm }
+}
+
+// Inizio del periodo in fuso Europe/Rome (settimana da lunedì, mese e anno
+// di calendario): una classifica "Settimana" riparte il lunedì, non scorre.
+function periodStart(period, now = new Date()) {
+  if (period === 'all') return null
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Rome', year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23'
+  }).formatToParts(now).filter(p => p.type !== 'literal').map(p => [p.type, Number(p.value)]))
+  const romeAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second)
+  const offset = Math.round((romeAsUtc - now.getTime()) / 60000) * 60000
+  let y = parts.year, m = parts.month - 1, d = parts.day
+  if (period === 'week') d -= (new Date(Date.UTC(y, m, d)).getUTCDay() + 6) % 7
+  else if (period === 'month') d = 1
+  else if (period === 'year') { m = 0; d = 1 }
+  return new Date(Date.UTC(y, m, d) - offset)
+}
 
 export default async function sessionRoutes(app) {
 
@@ -135,10 +170,7 @@ export default async function sessionRoutes(app) {
   app.get('/leaderboard', auth, async (req) => {
     const { period = 'all' } = req.query
     const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
-    if (period === 'week' || period === 'month') {
-      const days = period === 'week' ? 7 : 30
-      match.date = { $gte: new Date(Date.now() - days * 86400000) }
-    }
+    if (period === 'week' || period === 'month') match.date = { $gte: periodStart(period) }
 
     const rows = await Session.aggregate([
       { $match: match },
@@ -162,18 +194,98 @@ export default async function sessionRoutes(app) {
           ] }
         }
       },
-      { $sort: { score: -1 } },
+      { $sort: { score: -1, catchesCount: -1, _id: 1 } },
       { $limit: 50 },
       { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       { $project: {
           _id: 0, userId: '$_id', score: 1, sessionsCount: 1, catchesCount: 1,
-          displayName: '$user.displayName', avatar: '$user.avatar'
+          displayName: '$user.displayName', username: '$user.username', avatar: '$user.avatar'
         }
       }
     ])
 
     return { data: rows, period }
+  })
+
+  // GET /api/sessions/rankings — classifiche per tipo, specie, zona e periodo.
+  //   type:   longest | heaviest | fight_longest | fight_shortest | hours
+  //   species (facoltativa; per le classifiche sulle catture), period: week|month|year|all
+  //   scope:  world (default) | country | region | province | municipality, con `place`
+  // Conta solo contenuto pubblico (visibility 'users', non nascosto). Per le
+  // classifiche sulle catture, una riga per utente con il suo risultato
+  // migliore; a pari valore vince chi l'ha ottenuto prima. `me` è la posizione
+  // dell'utente anche se fuori dai primi 50. Le misure sono dichiarate
+  // dall'utente: `hasMedia` indica se la cattura ha foto/video a supporto.
+  const RANK_TYPES = {
+    longest:        { field: 'lengthCm',     dir: -1, unit: 'cm' },
+    heaviest:       { field: 'weightKg',     dir: -1, unit: 'kg' },
+    fight_longest:  { field: 'fightMinutes', dir: -1, unit: 'min' },
+    fight_shortest: { field: 'fightMinutes', dir: 1,  unit: 'min' }
+  }
+  const SCOPE_FIELDS = { country: 'location.country', region: 'location.region', province: 'location.province', municipality: 'location.municipality' }
+  const PERIODS = ['week', 'month', 'year']
+
+  app.get('/rankings', auth, async (req, reply) => {
+    const { type = 'longest', species, scope = 'world', place, period = 'all' } = req.query
+    const isHours = type === 'hours'
+    if (!isHours && !RANK_TYPES[type]) return reply.status(400).send({ error: 'Tipo di classifica non valido' })
+    if (scope !== 'world' && !SCOPE_FIELDS[scope]) return reply.status(400).send({ error: 'Ambito non valido' })
+    if (scope !== 'world' && !place) return reply.status(400).send({ error: 'Indica la zona (place)' })
+    if (period !== 'all' && !PERIODS.includes(period)) return reply.status(400).send({ error: 'Periodo non valido' })
+
+    const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
+    if (period !== 'all') match.date = { $gte: periodStart(period) }
+    if (scope !== 'world') match[SCOPE_FIELDS[scope]] = new RegExp(`^${escapeRegExp(String(place).trim())}$`, 'i')
+
+    let rows
+    if (isHours) {
+      const toMin = f => ({ $convert: { input: { $add: [
+        { $multiply: [{ $toInt: { $substrBytes: [f, 0, 2] } }, 60] },
+        { $toInt: { $substrBytes: [f, 3, 2] } }
+      ] }, to: 'int', onError: null, onNull: null } })
+      rows = await Session.aggregate([
+        { $match: { ...match, startTime: { $regex: /^\d\d:\d\d$/ }, endTime: { $regex: /^\d\d:\d\d$/ } } },
+        { $addFields: { s: toMin('$startTime'), e: toMin('$endTime') } },
+        { $match: { s: { $ne: null }, e: { $ne: null } } },
+        // Oltre la mezzanotte: fine < inizio, si somma un giorno.
+        { $addFields: { minutes: { $cond: [{ $gte: ['$e', '$s'] }, { $subtract: ['$e', '$s'] }, { $add: [{ $subtract: ['$e', '$s'] }, 1440] }] } } },
+        { $group: { _id: '$userId', minutes: { $sum: '$minutes' }, sessionsCount: { $sum: 1 } } },
+        { $addFields: { value: { $round: [{ $divide: ['$minutes', 60] }, 1] } } },
+        { $sort: { minutes: -1, _id: 1 } },
+        { $project: { _id: 0, userId: '$_id', value: 1, sessionsCount: 1 } }
+      ])
+    } else {
+      const { field, dir } = RANK_TYPES[type]
+      const catchMatch = { [`catches.${field}`]: { $gt: 0 } }
+      if (species) catchMatch['catches.species'] = new RegExp(`^${escapeRegExp(String(species).trim())}$`, 'i')
+      rows = await Session.aggregate([
+        { $match: match },
+        { $unwind: '$catches' },
+        { $match: catchMatch },
+        { $project: {
+            userId: 1, date: 1, sessionId: '$_id', species: '$catches.species', value: `$catches.${field}`,
+            released: '$catches.released', location: '$location.name',
+            hasMedia: { $gt: [{ $add: [{ $size: { $ifNull: ['$catches.media', []] } }, { $size: { $ifNull: ['$media', []] } }] }, 0] }
+        } },
+        { $sort: { value: dir, date: 1, sessionId: 1 } },
+        { $group: { _id: '$userId', best: { $first: '$$ROOT' } } },
+        { $replaceRoot: { newRoot: { $mergeObjects: ['$best', { userId: '$_id' }] } } },
+        { $sort: { value: dir, date: 1, sessionId: 1 } },
+        { $project: { _id: 0 } }
+      ])
+    }
+
+    const meIdx = rows.findIndex(r => String(r.userId) === String(req.user.sub))
+    const top = rows.slice(0, 50)
+    const ids = [...new Set([...top.map(r => String(r.userId)), ...(meIdx >= 50 ? [String(rows[meIdx].userId)] : [])])]
+    const users = await User.find({ _id: { $in: ids } }).select('displayName username avatar').lean()
+    const byId = new Map(users.map(u => [String(u._id), u]))
+    const decorate = (r, i) => ({ ...r, position: i + 1, displayName: byId.get(String(r.userId))?.displayName, username: byId.get(String(r.userId))?.username, avatar: byId.get(String(r.userId))?.avatar })
+    const data = top.map(decorate).filter(r => r.displayName)
+    const me = meIdx >= 0 ? decorate(rows[meIdx], meIdx) : null
+
+    return { data, me, total: rows.length, type, species: species || null, scope, place: place || null, period, unit: isHours ? 'h' : RANK_TYPES[type].unit }
   })
 
   // GET /api/sessions/:id
@@ -184,6 +296,7 @@ export default async function sessionRoutes(app) {
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
     session.media = session.media?.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` }))
+    session.record = await personalRecord(session)
     return session
   })
 

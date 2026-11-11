@@ -7,6 +7,10 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String },
   displayName:  { type: String },
   avatar:       { type: String },
+  // Profilo pubblico (bacheca): nome utente univoco, bio breve e luogo.
+  username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true, match: /^[a-z0-9._]{3,30}$/ },
+  bio:          { type: String, trim: true, maxlength: 150 },
+  location:     { name: { type: String, trim: true, maxlength: 80 }, lat: Number, lng: Number },
   providers: {
     google:   { id: String },
     facebook: { id: String }
@@ -48,6 +52,10 @@ const UserSchema = new mongoose.Schema({
     // Richiesta (facoltativa) di un sito per il negozio, gestita a parte
     siteRequest:         { requested: { type: Boolean, default: false }, at: { type: Date } }
   },
+
+  // Privacy del market: se true (default) chi non è amico può scrivere al venditore
+  // a proposito dei suoi annunci pubblici (visibilità «tutti»).
+  marketMessagesFromStrangers: { type: Boolean, default: true },
 
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
   // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.
