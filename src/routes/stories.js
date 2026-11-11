@@ -146,9 +146,9 @@ export default async function storyRoutes(app) {
     const story = await Story.findOne({ _id: req.params.id, expiresAt: { $gt: new Date() } })
     if (!story) return reply.status(404).send({ error: 'Storia non trovata' })
     if (!await canSee(story, meId, await friendIds(meId))) return reply.status(403).send({ error: 'Permesso negato' })
-    if (story.author.toString() !== meId && !story.views.some(v => v.user.toString() === meId)) {
-      story.views.push({ user: meId })
-      await story.save()
+    if (story.author.toString() !== meId) {
+      // Atomico: una sola visualizzazione per utente anche con richieste concorrenti.
+      await Story.updateOne({ _id: story._id, 'views.user': { $ne: meId } }, { $push: { views: { user: meId, at: new Date() } } })
     }
     return { ok: true }
   })

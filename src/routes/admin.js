@@ -6,6 +6,7 @@ import { reloadRuntimeConfig } from '../runtimeConfigStore.js'
 import { CONFIG_MANIFEST, CONFIG_MANIFEST_BY_KEY } from '../configManifest.js'
 import { escapeRegExp } from '../utils/regex.js'
 import { shopDocsDir } from './auth.js'
+import { googleQuota } from '../utils/weather.js'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -113,6 +114,9 @@ export default async function adminRoutes(app) {
     ])
     return { data: sessions, pagination: { page: parseInt(page), total, pages: Math.ceil(total / parseInt(limit)) } }
   })
+
+  // GET /api/admin/weather-usage — consumo mensile Google Weather: conteggio, soglie, blocco, avvisi già scattati
+  app.get('/weather-usage', adminOnly, async () => googleQuota.status())
 
   // GET /api/admin/config — configurazioni modificabili da interfaccia
   // (eBay, OAuth, SMTP, feature flag...). I valori "secret" non vengono mai
