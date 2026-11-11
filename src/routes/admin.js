@@ -106,7 +106,7 @@ export default async function adminRoutes(app) {
     if (hidden !== undefined) filter.hidden = hidden === 'true'
 
     const [sessions, total] = await Promise.all([
-      Session.find(filter).sort({ date: -1 })
+      Session.find(filter).sort({ date: -1, startTime: -1, createdAt: -1 })
         .skip((parseInt(page) - 1) * parseInt(limit)).limit(parseInt(limit))
         .populate('userId', 'displayName email').lean(),
       Session.countDocuments(filter)

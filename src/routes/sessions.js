@@ -83,7 +83,7 @@ export default async function sessionRoutes(app) {
 
     const skip = (parseInt(page) - 1) * parseInt(limit)
     const [sessions, total] = await Promise.all([
-      Session.find(filter).sort({ date: -1 }).skip(skip).limit(parseInt(limit)).lean(),
+      Session.find(filter).sort({ date: -1, startTime: -1, createdAt: -1 }).skip(skip).limit(parseInt(limit)).lean(),
       Session.countDocuments(filter)
     ])
 
