@@ -1,3 +1,10 @@
+## [1.31.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.31.0...server-v1.31.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **chat:** apri sempre una conversazione già esistente, il permesso serve solo per iniziarla ([2cdbccd](https://github.com/ziobob94/fishlog-server/commit/2cdbccd96d8faad7d0128f62e758d6751c4fc4e7))
+
 # [1.31.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.30.0...server-v1.31.0) (2026-11-11)
 
 
