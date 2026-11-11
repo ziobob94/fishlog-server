@@ -185,3 +185,6 @@ export async function getDay(lat, lng, date, hour = 12, marine = false) {
   }
   return { ...out, sources }
 }
+
+// Interni riusati da weatherPanel.js
+export { cached, getJson, gUrl, num, kmh, ymd, pick, settle, ck, googleTypeToCondition as gCondition, wmoToCondition as omCondition, OM, OM_MARINE }

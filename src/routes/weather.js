@@ -1,4 +1,5 @@
 import { getCurrent, getDay, googleKey } from '../utils/weather.js'
+import { getOverview } from '../utils/weatherPanel.js'
 
 // Meteo lato server: la chiave Google Weather non esce mai dal server.
 export default async function weatherRoutes(app) {
@@ -25,5 +26,13 @@ export default async function weatherRoutes(app) {
     if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return reply.status(400).send({ error: 'Parametri non validi' })
     const hour = Math.min(23, Math.max(0, parseInt(req.query.hour, 10) || 12))
     return { ...(await getDay(c.lat, c.lng, date, hour, req.query.marine === '1' || req.query.marine === 'true')), googleConfigured: !!googleKey() }
+  })
+
+  // GET /api/weather/overview?lat&lng — pannello completo: attuale + 48 h + 7 giorni + mare + dati utili alla pesca
+  app.get('/overview', auth, async (req, reply) => {
+    const c = coords(req.query)
+    if (!c) return reply.status(400).send({ error: 'Coordinate non valide' })
+    try { return await getOverview(c.lat, c.lng) }
+    catch (e) { return reply.status(e.status === 502 ? 502 : 500).send({ error: 'Meteo non disponibile, riprova tra poco' }) }
   })
 }
