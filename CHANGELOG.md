@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.24.0...server-v1.25.0) (2026-11-11)
+
+
+### Features
+
+* visibilità annunci (tutti/amici/gruppi), contatto venditore opt-in, visualizzazioni uniche ([ce953cd](https://github.com/ziobob94/fishlog-server/commit/ce953cd59d02d7db472e6e8b809cc94d26580588))
+
 # [1.24.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.23.0...server-v1.24.0) (2026-11-10)
 
 
