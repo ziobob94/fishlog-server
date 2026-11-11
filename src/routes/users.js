@@ -1,5 +1,8 @@
 import User from '../models/User.js'
+import mongoose from 'mongoose'
 import { escapeRegExp } from '../utils/regex.js'
+import { visibilityFilter } from '../utils/sessionAccess.js'
+import { userCatches, periodRange, SORTS } from '../utils/userCatches.js'
 
 export default async function userRoutes(app) {
 
@@ -29,5 +32,28 @@ export default async function userRoutes(app) {
     const user = await User.findById(req.params.id).select('displayName avatar createdAt').lean()
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
     return user
+  })
+
+  // GET /api/users/:id/catches?sort=weight|length|species&species=&period=all|30d|YYYY&page=
+  // Classifica delle catture di un utente con record e totali. La privacy è
+  // quella delle uscite: di un altro utente si vedono solo le catture di
+  // uscite visibili a chi guarda (pubbliche agli utenti, o di gruppi in comune).
+  app.get('/:id/catches', auth, async (req, reply) => {
+    const { id } = req.params
+    const { sort = 'weight', species = '', period = 'all' } = req.query
+    const page = Number.parseInt(req.query.page ?? '1', 10)
+
+    if (!mongoose.isValidObjectId(id)) return reply.status(404).send({ error: 'Utente non trovato' })
+    if (!SORTS.includes(sort)) return reply.status(400).send({ error: 'sort non valido' })
+    if (periodRange(period) === null) return reply.status(400).send({ error: 'period non valido' })
+    if (!Number.isInteger(page) || page < 1) return reply.status(400).send({ error: 'page non valida' })
+
+    const user = await User.findById(id).select('displayName avatar').lean()
+    if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
+
+    const visibility = await visibilityFilter(req.user)
+    const baseUrl = `${req.protocol}://${req.headers.host}`
+    const result = await userCatches({ userId: id, visibility, sort, species, period, page, baseUrl })
+    return { user: { _id: user._id, displayName: user.displayName, avatar: user.avatar }, isSelf: id === req.user.sub, ...result }
   })
 }
