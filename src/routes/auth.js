@@ -124,7 +124,7 @@ export default async function authRoutes(app) {
 
     const user = new User({
       email: normalizedEmail,
-      displayName: isNonEmptyString(displayName) ? displayName : normalizedEmail.split('@')[0],
+      displayName: (typeof displayName === 'string' && displayName.trim()) ? displayName.trim().slice(0, 60) : normalizedEmail.split('@')[0],
       acceptedTermsAt: new Date(),
       acceptedTermsVersion: TERMS_VERSION
     })
@@ -162,7 +162,11 @@ export default async function authRoutes(app) {
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
     const { displayName, defaultVisibility, username, bio, location, marketMessagesFromStrangers } = req.body
-    if (displayName !== undefined) user.displayName = displayName
+    if (displayName !== undefined) {
+      if (typeof displayName !== 'string' || !displayName.trim() || displayName.trim().length > 60)
+        return reply.status(400).send({ error: 'Nome non valido (1-60 caratteri)' })
+      user.displayName = displayName.trim()
+    }
     if (bio !== undefined) {
       if (typeof bio !== 'string' || bio.length > 150) return reply.status(400).send({ error: 'La bio può avere al massimo 150 caratteri' })
       user.bio = bio.trim()

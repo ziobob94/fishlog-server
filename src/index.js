@@ -92,7 +92,13 @@ await app.register(multipart, {
 const uploadsDir = path.resolve(cfg.get('app.dirs.uploads'))
 await app.register(staticFiles, {
   root: uploadsDir,
-  prefix: '/uploads/'
+  prefix: '/uploads/',
+  // Difesa in profondità: i file caricati dagli utenti non devono mai poter
+  // eseguire script nell'origin delle API, qualunque sia il loro contenuto.
+  setHeaders: (res) => {
+    res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self'; media-src 'self'")
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+  }
 })
 
 

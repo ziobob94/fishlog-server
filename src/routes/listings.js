@@ -220,7 +220,7 @@ export default async function listingRoutes(app) {
 
   // GET /api/listings/:id
   app.get('/:id', async (req, reply) => {
-    const listing = await Listing.findById(req.params.id).populate('seller', PUBLIC_SELLER_SELECT + ' email').lean()
+    const listing = await Listing.findById(req.params.id).populate('seller', PUBLIC_SELLER_SELECT).lean()
     if (!listing || listing.status === 'deleted') return reply.status(404).send({ error: 'Annuncio non trovato' })
     // Visibilità: un annuncio non visibile a chi guarda si comporta come inesistente.
     const viewerId = await optionalViewer(req)
