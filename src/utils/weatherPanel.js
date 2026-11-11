@@ -144,7 +144,7 @@ function fromOpenMeteo(om) {
 }
 
 function buildMarine(m) {
-  const empty = { available: false, waveHeight: null, wavePeriod: null, waveDeg: null, swellHeight: null, swellPeriod: null, swellDeg: null, windWaveHeight: null, seaTemp: null, seaLevel: null, currentSpeed: null, currentDeg: null, tides: null, dailyWaveMax: [] }
+  const empty = { available: false, waveHeight: null, wavePeriod: null, waveDeg: null, swellHeight: null, swellPeriod: null, swellDeg: null, windWaveHeight: null, seaTemp: null, seaLevel: null, currentSpeed: null, currentDeg: null, tides: null, dailyWaveMax: [], waves: [] }
   const c = m?.current
   if (!c) return empty
   const out = {
@@ -158,6 +158,9 @@ function buildMarine(m) {
   const series = (hh.time || []).slice(0, 48).map((time, i) => ({ time, h: num(hh.sea_level_height_msl?.[i]) }))
   const hasTide = series.some(s => s.h != null) && new Set(series.map(s => s.h)).size > 3
   out.tides = hasTide ? { approximate: true, series: series.filter(s => s.h != null).map(s => ({ time: s.time, height: s.h })), extremes: tideExtremes(series) } : null
+  // Altezza e periodo dell'onda ora per ora (48 h) per il grafico del mare; vuota se il modello non copre il punto.
+  const waves = (hh.time || []).slice(0, 48).map((time, i) => ({ time, height: num(hh.wave_height?.[i]), period: num(hh.wave_period?.[i]) }))
+  out.waves = waves.some(w => w.height != null) ? waves : []
   out.available = [out.waveHeight, out.wavePeriod, out.seaTemp].some(v => v != null)
   return out.available ? out : empty
 }
