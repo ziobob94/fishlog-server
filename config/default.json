@@ -54,6 +54,9 @@
         "clientSecret": "",
         "sandbox": false
     },
+    "google": {
+        "weatherKey": ""
+    },
     "features": {
         "passwordAuth": true
     },

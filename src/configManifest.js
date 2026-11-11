@@ -29,6 +29,10 @@ export const CONFIG_MANIFEST = [
   { key: 'mail.smtp.pass',   group: 'Email (SMTP)', label: 'Password',          type: 'string',  secret: true },
   { key: 'mail.from',        group: 'Email (SMTP)', label: 'Mittente',          type: 'string',  secret: false },
 
+  // Chiave SERVER per la Google Weather API (mai esposta al client; in alternativa env GOOGLE_WEATHER_KEY).
+  // Restringerla per indirizzo IP del server e alla sola Weather API.
+  { key: 'google.weatherKey', group: 'Google Weather', label: 'Chiave API Weather', type: 'string', secret: true },
+
   { key: 'features.passwordAuth', group: 'Feature flags', label: 'Login con email e password abilitato', type: 'boolean', secret: false },
 
   // Dati del Titolare del trattamento, mostrati pubblicamente nelle pagine
