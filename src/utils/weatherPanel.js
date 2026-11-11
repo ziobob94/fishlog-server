@@ -8,6 +8,8 @@ import { googleKey } from './weather.js'
 import { attachDailyActivity } from './fishingDay.js'
 
 const H = 3600e3
+// Ore passate richieste a Open-Meteo: bastano a coprire dalla mezzanotte di oggi (max 23) e le 3 ore precedenti per la tendenza della pressione.
+const PAST_HOURS = 24
 // Somma e massimo che ignorano i valori mancanti; se manca tutto restituiscono null (mai 0).
 const sumOf = (...vs) => { const n = vs.map(num).filter(v => v != null); return n.length ? n.reduce((a, b) => a + b, 0) : null }
 const maxOf = (...vs) => { const n = vs.map(num).filter(v => v != null); return n.length ? Math.max(...n) : null }
@@ -69,11 +71,11 @@ export function tideExtremes(series) {
 
 // ── Fonti ─────────────────────────────────────────────────────────────────────
 
-const omPanel = (lat, lng) => cached(`omp:${ck(lat, lng)}`, 15 * 60e3, () => getJson(
+const omPanel = (lat, lng) => cached(`omp2:${ck(lat, lng)}`, 15 * 60e3, () => getJson(
   `${OM}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day`
   + `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,pressure_msl`
   + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max`
-  + `&forecast_days=16&past_hours=6&wind_speed_unit=kmh&timezone=auto`))
+  + `&forecast_days=16&past_hours=${PAST_HOURS}&wind_speed_unit=kmh&timezone=auto`))
 
 const omMarine = (lat, lng) => cached(`omm3:${ck(lat, lng)}`, 30 * 60e3, () => getJson(
   `${OM_MARINE}?latitude=${lat}&longitude=${lng}`
@@ -141,19 +143,23 @@ function fromOpenMeteo(om) {
   if (!om?.current) return null
   const c = om.current, h = om.hourly || {}, d = om.daily || {}
   const nowIdx = (h.time || []).findIndex(t => t >= c.time)
-  const i0 = nowIdx < 0 ? 6 : nowIdx
-  const hourly = (h.time || []).slice(i0, i0 + 168).map((t, k) => ({
+  const i0 = nowIdx < 0 ? PAST_HOURS : nowIdx
+  const row = (t, j) => ({
     time: t, date: t.slice(0, 10), hour: Number(t.slice(11, 13)), source: 'open-meteo',
-    condition: omCondition(h.weather_code?.[i0 + k], h.wind_speed_10m?.[i0 + k]),
-    wmo: num(h.weather_code?.[i0 + k]),
-    temp: num(h.temperature_2m?.[i0 + k]),
-    precipProbability: num(h.precipitation_probability?.[i0 + k]),
-    precipMm: num(h.precipitation?.[i0 + k]),
-    windSpeed: num(h.wind_speed_10m?.[i0 + k]),
-    windGust: num(h.wind_gusts_10m?.[i0 + k]),
-    windDeg: num(h.wind_direction_10m?.[i0 + k]),
-    pressure: num(h.pressure_msl?.[i0 + k]),
-  }))
+    condition: omCondition(h.weather_code?.[j], h.wind_speed_10m?.[j]),
+    wmo: num(h.weather_code?.[j]),
+    temp: num(h.temperature_2m?.[j]),
+    precipProbability: num(h.precipitation_probability?.[j]),
+    precipMm: num(h.precipitation?.[j]),
+    windSpeed: num(h.wind_speed_10m?.[j]),
+    windGust: num(h.wind_gusts_10m?.[j]),
+    windDeg: num(h.wind_direction_10m?.[j]),
+    pressure: num(h.pressure_msl?.[j]),
+  })
+  const hourly = (h.time || []).slice(i0, i0 + 168).map((t, k) => row(t, i0 + k))
+  // Ore di oggi già trascorse (dalla mezzanotte locale): servono solo al calcolo dell'attività, non vanno nell'elenco.
+  const todayDate = c.time.slice(0, 10)
+  const pastToday = (h.time || []).slice(0, i0).map((t, j) => row(t, j)).filter(r => r.date === todayDate)
   const daily = (d.time || []).slice(0, 15).map((date, k) => ({
     date, source: 'open-meteo',
     condition: omCondition(d.weather_code?.[k], d.wind_speed_10m_max?.[k]),
@@ -176,12 +182,16 @@ function fromOpenMeteo(om) {
   }
   const pressure3hAgo = i0 >= 3 ? num(h.pressure_msl?.[i0 - 3]) : null
   const pressureHistory = (h.pressure_msl || []).slice(Math.max(0, i0 - 5), i0 + 1).filter(v => v != null)
-  return { cur, hourly, daily, pressure3hAgo, pressureHistory, pressureNow: num(h.pressure_msl?.[i0]), utcOffset: Number(om.utc_offset_seconds) || 0 }
+  return { cur, hourly, pastToday, daily, pressure3hAgo, pressureHistory, pressureNow: num(h.pressure_msl?.[i0]), utcOffset: Number(om.utc_offset_seconds) || 0 }
 }
 
 function buildMarine(m) {
   const empty = { available: false, waveHeight: null, wavePeriod: null, waveDeg: null, swellHeight: null, swellPeriod: null, swellDeg: null, windWaveHeight: null, seaTemp: null, seaLevel: null, currentSpeed: null, currentDeg: null, tides: null, dailyWaveMax: [], waves: [] }
-  const c = m?.current
+  // Se manca il blocco «current» ma ci sono le ore, si ripiega sull'ora più vicina (temperatura del mare e livello): oggi l'attività non resta senza acqua.
+  const hh0 = m?.hourly || {}
+  const nowIso = m?.current?.time || ''
+  const k0 = (hh0.time || []).findIndex(t => t >= nowIso)
+  const c = m?.current || (hh0.time?.length ? { sea_surface_temperature: hh0.sea_surface_temperature?.[Math.max(0, k0)], wave_height: hh0.wave_height?.[Math.max(0, k0)], wave_period: hh0.wave_period?.[Math.max(0, k0)] } : null)
   if (!c) return empty
   const out = {
     waveHeight: num(c.wave_height), wavePeriod: num(c.wave_period), waveDeg: num(c.wave_direction),
@@ -241,7 +251,8 @@ export async function getOverview(reqLat, reqLng) {
   const marine = buildMarine(marineRaw)
   const today = w.daily[0] || {}
   const moon = moonPhase()
-  return attachDailyActivity({
+  // Per oggi il calcolo dell'attività usa anche le ore già passate (Open-Meteo), così la giornata è completa. Proprietà non enumerabile: non finisce nella risposta.
+  const view = {
     location: { lat: reqLat, lng: reqLng },
     updatedAt: new Date().toISOString(),
     current: w.cur,
@@ -256,5 +267,9 @@ export async function getOverview(reqLat, reqLng) {
     },
     degraded: useG && googleQuota.isBlocked(), // quota Google al blocco: dati da cache o da ripiego
     sources: { weather: source, marine: marine.available ? 'open-meteo' : null, extended: extended ? 'open-meteo' : null },
-  })
+  }
+  const have = new Set(view.hourly.map(r => `${r.date}T${r.hour}`))
+  const past = (om?.pastToday || []).filter(r => !have.has(`${r.date}T${r.hour}`))
+  Object.defineProperty(view, 'activityHours', { value: past.length ? [...past, ...view.hourly] : view.hourly, enumerable: false })
+  return attachDailyActivity(view)
 }

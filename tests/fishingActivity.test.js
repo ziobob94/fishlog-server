@@ -88,3 +88,17 @@ test('WMO dai tipi Google', () => {
   assert.equal(googleTypeToWmo('THUNDERSTORM'), 95)
   assert.equal(googleTypeToWmo(undefined), null)
 })
+
+test('oggi a fine giornata: con le ore passate l\'attività c\'è e la temperatura dell\'acqua conta', () => {
+  const date = '2026-07-10'
+  const mk = h => ({ date, hour: h, time: `${date}T${String(h).padStart(2, '0')}:00`, windSpeed: 8, pressure: 1015 - h * 0.1 })
+  const all = Array.from({ length: 24 }, (_, h) => mk(h))
+  const marineHours = all.map(r => ({ time: r.time, seaTemp: 20 }))
+  const base = { date, marineHours, sunrise: `${date}T05:40`, sunset: `${date}T20:30`, moonIllumination: 0.5 }
+  // solo le ultime 4 ore (come prima del fix): nessuna stima
+  assert.equal(activityForDay({ ...base, hourly: all.slice(20) }), null)
+  // con le ore dalla mezzanotte: stima completa, con temperatura dell'acqua
+  const a = activityForDay({ ...base, hourly: all })
+  assert.ok(a && a.hours.length === 24 && a.partial === false)
+  assert.ok(a.factors.waterTemp && a.factors.waterTemp.score === 1)
+})
