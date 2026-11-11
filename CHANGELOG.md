@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.31.1...server-v1.32.0) (2026-11-11)
+
+
+### Features
+
+* meteo 7 giorni orari e mare, codici WMO e attività dei pesci ([5e7ab33](https://github.com/ziobob94/fishlog-server/commit/5e7ab33e19c97e678986c23208435303fef23db8))
+
 ## [1.31.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.31.0...server-v1.31.1) (2026-11-11)
 
 
