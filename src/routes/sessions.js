@@ -78,11 +78,13 @@ export default async function sessionRoutes(app) {
 
   // GET /api/sessions
   app.get('/', auth, async (req) => {
-    const { page = 1, limit = 20, technique, location, dateFrom, dateTo, search, mine } = req.query
+    const { page = 1, limit = 20, technique, location, dateFrom, dateTo, search, mine, userId } = req.query
     const filter = await visibilityFilter(req.user)
     // mine=true: solo le uscite dell'utente (es. mappamondo della Home)
     if (mine === 'true') filter.userId = req.user.sub
 
+    // Solo le uscite di un utente (per altri: solo quelle che il visitatore può già vedere)
+    if (userId && mongoose.isValidObjectId(userId)) filter.userId = new mongoose.Types.ObjectId(userId)
     if (technique) filter.technique = technique
     if (location)  filter['location.name'] = new RegExp(escapeRegExp(location), 'i')
     if (dateFrom || dateTo) {
