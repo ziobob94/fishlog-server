@@ -161,7 +161,7 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { displayName, defaultVisibility, username, bio, location } = req.body
+    const { displayName, defaultVisibility, username, bio, location, marketMessagesFromStrangers } = req.body
     if (displayName !== undefined) user.displayName = displayName
     if (bio !== undefined) {
       if (typeof bio !== 'string' || bio.length > 150) return reply.status(400).send({ error: 'La bio può avere al massimo 150 caratteri' })
@@ -183,6 +183,7 @@ export default async function authRoutes(app) {
         user.username = undefined
       }
     }
+    if (marketMessagesFromStrangers !== undefined) user.marketMessagesFromStrangers = !!marketMessagesFromStrangers
     if (defaultVisibility !== undefined) {
       if (!['public', 'users', 'group', 'private'].includes(defaultVisibility))
         return reply.status(400).send({ error: 'Visibilità non valida' })
@@ -675,6 +676,7 @@ export default async function authRoutes(app) {
       location:          { name: user.location?.name || '', lat: user.location?.lat ?? null, lng: user.location?.lng ?? null },
       role:              user.role,
       defaultVisibility: user.defaultVisibility,
+      marketMessagesFromStrangers: user.marketMessagesFromStrangers !== false,
       notificationPreferences: {
         emailChatMessages:   user.notificationPreferences?.emailChatMessages   !== false,
         emailComments:       user.notificationPreferences?.emailComments       !== false,

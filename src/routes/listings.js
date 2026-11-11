@@ -2,7 +2,8 @@ import mongoose from 'mongoose'
 import Listing, { CATEGORIES } from '../models/Listing.js'
 import Session from '../models/Session.js'
 import User from '../models/User.js'
-import { canEdit } from '../utils/listingAccess.js'
+import ListingView from '../models/ListingView.js'
+import { canEdit, listingVisibilityFilter, parseVisibility } from '../utils/listingAccess.js'
 import { searchEbay } from '../utils/ebay.js'
 import { escapeRegExp } from '../utils/regex.js'
 
@@ -34,6 +35,11 @@ const CATEGORY_QUERY = {
 export default async function listingRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
+
+  // Auth opzionale: id dell'utente se c'è un token valido, altrimenti null (anonimo).
+  async function optionalViewer(req) {
+    try { await req.jwtVerify(); return req.user.sub } catch { return null }
+  }
 
   // Ricerca eBay "personalizzata": priorità alle preferenze dichiarate
   // dall'utente (sondaggio post-registrazione o profilo); in assenza di
@@ -76,7 +82,8 @@ export default async function listingRoutes(app) {
       location, priceMin, priceMax
     } = req.query
 
-    const filter = { status: 'active', sellerType: 'privato' }
+    const viewerId = await optionalViewer(req)
+    const filter = { status: 'active', sellerType: 'privato', $and: [await listingVisibilityFilter(viewerId)] }
 
     if (category)   filter.category = category
     if (condition)  filter.condition = condition
@@ -183,7 +190,7 @@ export default async function listingRoutes(app) {
     ])
 
     const counts = await Listing.aggregate([
-      { $match: { seller: { $in: shops.map(s => s._id) }, status: 'active' } },
+      { $match: { seller: { $in: shops.map(s => s._id) }, status: 'active', visibility: { $in: ['all', null] } } },
       { $group: { _id: '$seller', count: { $sum: 1 } } }
     ])
     const countBySeller = Object.fromEntries(counts.map(c => [c._id.toString(), c.count]))
@@ -206,7 +213,8 @@ export default async function listingRoutes(app) {
     if (!user?.shop?.enabled) return reply.status(404).send({ error: 'Negozio non trovato' })
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
-    const listings = await Listing.find({ seller: user._id, status: 'active' }).sort({ createdAt: -1 }).lean()
+    const viewerId = await optionalViewer(req)
+    const listings = await Listing.find({ seller: user._id, status: 'active', $and: [await listingVisibilityFilter(viewerId)] }).sort({ createdAt: -1 }).lean()
     return { shop: { _id: user._id, displayName: user.displayName, avatar: user.avatar, ...user.shop }, listings: listings.map(l => withMediaUrls(baseUrl, l)) }
   })
 
@@ -214,9 +222,36 @@ export default async function listingRoutes(app) {
   app.get('/:id', async (req, reply) => {
     const listing = await Listing.findById(req.params.id).populate('seller', PUBLIC_SELLER_SELECT + ' email').lean()
     if (!listing || listing.status === 'deleted') return reply.status(404).send({ error: 'Annuncio non trovato' })
-    await Listing.updateOne({ _id: listing._id }, { $inc: { views: 1 } })
+    // Visibilità: un annuncio non visibile a chi guarda si comporta come inesistente.
+    const viewerId = await optionalViewer(req)
+    const isSeller = !!viewerId && listing.seller?._id?.toString() === viewerId
+    const vis = listing.visibility || 'all'
+    if (vis !== 'all' && !isSeller) {
+      const visible = viewerId && await Listing.exists({ _id: listing._id, $and: [await listingVisibilityFilter(viewerId)] })
+      if (!visible) return reply.status(404).send({ error: 'Annuncio non trovato' })
+    }
     const baseUrl = `${req.protocol}://${req.headers.host}`
     return withMediaUrls(baseUrl, listing)
+  })
+
+  // POST /api/listings/:id/view — registra una visualizzazione unica: una per
+  // utente e per annuncio, mai quella del venditore. Riaperture e richieste in
+  // parallelo non aumentano il contatore (indice unico su ListingView).
+  app.post('/:id/view', auth, async (req, reply) => {
+    const listing = await Listing.findById(req.params.id).select('seller status views').lean()
+    if (!listing || listing.status === 'deleted') return reply.status(404).send({ error: 'Annuncio non trovato' })
+    if (listing.seller.toString() === req.user.sub) return { views: listing.views || 0, counted: false }
+    let counted = false
+    try {
+      await ListingView.create({ listing: listing._id, user: req.user.sub })
+      counted = true
+    } catch (err) {
+      if (err.code !== 11000) throw err   // già visto: nessun incremento
+    }
+    const updated = counted
+      ? await Listing.findByIdAndUpdate(listing._id, { $inc: { views: 1 } }, { new: true }).select('views').lean()
+      : listing
+    return { views: updated?.views || 0, counted }
   })
 
   // POST /api/listings
@@ -236,7 +271,11 @@ export default async function listingRoutes(app) {
       return reply.status(403).send({ error: 'Per pubblicare come negozio devi prima essere verificato', code: 'SELLER_NOT_VERIFIED' })
     }
 
+    const vis = await parseVisibility(req.user.sub, req.body)
+    if (vis.error) return reply.status(400).send({ error: vis.error })
+
     const listing = await Listing.create({
+      ...vis,
       seller: req.user.sub,
       sellerType: isShop ? 'negozio' : 'privato',
       title, description, category, condition, price,
@@ -263,6 +302,9 @@ export default async function listingRoutes(app) {
     if (currency !== undefined)    listing.currency = currency
     if (location !== undefined)    listing.location = location
     if (status !== undefined && ['active', 'reserved', 'sold'].includes(status)) listing.status = status
+    const vis = await parseVisibility(listing.seller.toString(), req.body)
+    if (vis.error) return reply.status(400).send({ error: vis.error })
+    if (vis.visibility) { listing.visibility = vis.visibility; listing.allowedGroups = vis.allowedGroups }
 
     await listing.save()
     return listing
