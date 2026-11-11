@@ -11,6 +11,23 @@ import { escapeRegExp } from '../utils/regex.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const BAIT_CATALOG = JSON.parse(readFileSync(path.join(__dirname, '../data/baits.json'), 'utf-8'))
 
+// Record personale: la cattura più lunga dell'uscita è la più lunga di quella
+// specie tra tutte le uscite dell'autore (a parità vale la prima in ordine di
+// data). Restituisce { species, lengthCm } oppure null.
+async function personalRecord(session) {
+  const best = (session.catches || []).filter(c => c.species && Number(c.lengthCm) > 0)
+    .sort((a, b) => b.lengthCm - a.lengthCm)[0]
+  if (!best || !session.userId) return null
+  const better = await Session.aggregate([
+    { $match: { userId: session.userId, hidden: { $ne: true }, _id: { $ne: session._id } } },
+    { $unwind: '$catches' },
+    { $match: { 'catches.species': best.species, 'catches.lengthCm': { $gte: best.lengthCm } } },
+    { $match: { $or: [{ 'catches.lengthCm': { $gt: best.lengthCm } }, { date: { $lt: session.date } }] } },
+    { $limit: 1 }
+  ])
+  return better.length ? null : { species: best.species, lengthCm: best.lengthCm }
+}
+
 export default async function sessionRoutes(app) {
 
   const auth = { preHandler: [app.authenticate] }
@@ -178,6 +195,7 @@ export default async function sessionRoutes(app) {
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
     session.media = session.media?.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` }))
+    session.record = await personalRecord(session)
     return session
   })
 
