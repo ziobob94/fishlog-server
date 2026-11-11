@@ -171,7 +171,8 @@ export default async function sessionRoutes(app) {
   // più spesso a vuoto, perché serve comunque contenuto vero.
   app.get('/leaderboard', auth, async (req) => {
     const { period = 'all' } = req.query
-    const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
+    // Solo uscite chiuse: una pescata ancora in corso non è "pubblicata".
+    const match = { visibility: 'users', hidden: false, status: 'closed', userId: { $ne: null } }
     if (period === 'week' || period === 'month') match.date = { $gte: periodStart(period) }
 
     const rows = await Session.aggregate([
