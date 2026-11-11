@@ -1,4 +1,6 @@
 import User from '../models/User.js'
+import Session from '../models/Session.js'
+import Friendship from '../models/Friendship.js'
 import mongoose from 'mongoose'
 import { escapeRegExp } from '../utils/regex.js'
 import { visibilityFilter } from '../utils/sessionAccess.js'
@@ -29,9 +31,23 @@ export default async function userRoutes(app) {
 
   // GET /api/users/:id — profilo pubblico di un altro utente
   app.get('/:id', auth, async (req, reply) => {
+    if (!mongoose.isValidObjectId(req.params.id)) return reply.status(404).send({ error: 'Utente non trovato' })
     const user = await User.findById(req.params.id).select('displayName avatar createdAt').lean()
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
-    return user
+
+    // Contatori del profilo: uscite visibili a chi guarda, catture in quelle uscite, amici.
+    const visibility = await visibilityFilter(req.user)
+    const [sess, friendsCount] = await Promise.all([
+      Session.aggregate([
+        { $match: { $and: [{ userId: new mongoose.Types.ObjectId(req.params.id) }, visibility] } },
+        { $group: { _id: null, sessions: { $sum: 1 }, catches: { $sum: { $size: { $ifNull: ['$catches', []] } } } } }
+      ]),
+      Friendship.countDocuments({
+        status: 'accepted',
+        $or: [{ requester: req.params.id }, { recipient: req.params.id }]
+      })
+    ])
+    return { ...user, counts: { sessions: sess[0]?.sessions || 0, catches: sess[0]?.catches || 0, friends: friendsCount } }
   })
 
   // GET /api/users/:id/catches?sort=weight|length|species&species=&period=all|30d|YYYY&page=
