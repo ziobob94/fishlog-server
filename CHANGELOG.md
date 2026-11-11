@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.25.0...server-v1.26.0) (2026-11-11)
+
+
+### Features
+
+* meteo da Google Weather API lato server (/api/weather), Open-Meteo solo per mare e ripiego ([6ecb627](https://github.com/ziobob94/fishlog-server/commit/6ecb627addcc537ce77a4a6705dcbe65487b2838))
+
 # [1.25.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.24.0...server-v1.25.0) (2026-11-11)
 
 
