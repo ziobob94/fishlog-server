@@ -42,6 +42,8 @@ Punteggio del giorno: media delle **6 ore migliori**. Livelli (`levels`): ≤ 0,
 Le **finestre più favorevoli** sono ore consecutive con punteggio ≥ max(0,6; massimo del giorno − 0,08), al massimo due.
 «Cosa pesa nella stima»: per ogni fattore la media del giorno diventa una parola (favorevole ≥ 0,62, sfavorevole ≤ 0,40, altrimenti neutro) con una frase prudente.
 
+**Oggi.** L'elenco `hourly` del pannello parte dall'ora corrente, ma per il calcolo dell'attività di oggi si aggiungono le ore già trascorse (da mezzanotte) prese da Open-Meteo (`past_hours=24`), così la giornata è completa anche a sera e la temperatura dell'acqua conta per tutte le ore. Se Open-Meteo non risponde si torna al comportamento precedente (stima parziale o assente). Se il blocco `current` marino manca ma ci sono le ore, la temperatura del mare ripiega sull'ora più vicina. Pesi e soglie non cambiano.
+
 **Orizzonte.** Attività solo per i primi 7 giorni (servono ore, pressione e mare). Oltre il 7º giorno `activity` è `null` e restano solo le specie per stagione.
 **Affidabilità** della previsione: alta fino al 3º giorno, media fino al 7º, bassa oltre.
 

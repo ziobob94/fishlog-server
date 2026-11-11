@@ -13,7 +13,7 @@ function inputsFor(view, i) {
   const d = view.daily[i]
   const marine = view.marine?.available ? view.marine : null
   return {
-    date: d.date, hourly: view.hourly, marineHours: marine?.waves || [], tideSeries: marine?.tides?.series?.map(s => ({ time: s.time, height: s.height })) || [],
+    date: d.date, hourly: view.activityHours || view.hourly, marineHours: marine?.waves || [], tideSeries: marine?.tides?.series?.map(s => ({ time: s.time, height: s.height })) || [],
     sunrise: d.sunrise ?? (i === 0 ? view.fishing?.sunrise : null), sunset: d.sunset ?? (i === 0 ? view.fishing?.sunset : null),
     moonIllumination: view.fishing?.moon?.illumination ?? null,
   }
