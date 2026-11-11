@@ -1,5 +1,7 @@
 import { getCurrent, getDay, googleKey } from '../utils/weather.js'
 import { getOverview } from '../utils/weatherPanel.js'
+import { fishingForDay, userSpeciesCounts, rulesOverride } from '../utils/fishingDay.js'
+import { loadRules } from '../utils/fishingActivity.js'
 
 // Meteo lato server: la chiave Google Weather non esce mai dal server.
 export default async function weatherRoutes(app) {
@@ -36,6 +38,23 @@ export default async function weatherRoutes(app) {
     try { return await getOverview(c.lat, c.lng) }
     catch (e) { return reply.status(e.status === 502 ? 502 : 500).send({ error: 'Meteo non disponibile, riprova tra poco' }) }
   }
+  // GET /api/weather/fishing?lat&lng&date=YYYY-MM-DD — attività dei pesci (stima indicativa) e specie probabili per un giorno.
+  // Entro 7 giorni: attività oraria, finestre, fattori e specie da condizioni; oltre: solo specie per stagione (activity: null).
+  // Lo storico delle catture dell'utente nel luogo (raggio da fishing.rules.species.userHistory.radiusKm) pesa sulle specie.
+  app.get('/fishing', auth, async (req, reply) => {
+    const c = coords(req.query)
+    const date = String(req.query.date || '')
+    if (!c || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) return reply.status(400).send({ error: 'Parametri non validi' })
+    try {
+      const view = await getOverview(c.lat, c.lng)
+      const radius = loadRules(rulesOverride()).species.userHistory.radiusKm
+      const counts = await userSpeciesCounts(req.user.sub, c.lat, c.lng, radius).catch(() => new Map())
+      const out = fishingForDay(view, date, counts)
+      if (!out) return reply.status(404).send({ error: 'Giorno fuori dalla previsione' })
+      return out
+    } catch (e) { return reply.status(e.status === 502 ? 502 : 500).send({ error: 'Meteo non disponibile, riprova tra poco' }) }
+  })
+
   app.get('/overview', auth, overview)
   app.get('/', auth, overview)
 }

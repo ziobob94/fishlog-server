@@ -1,0 +1,24 @@
+{
+  "_nota": "Profili indicativi per l'elenco «pesci più probabili». season = 12 valori (gen-dic) da 0 a 1; waterTemp = intervallo ottimale in °C; pref = momento preferito (alba_tramonto | notte | giorno | indifferente); tide = quanto conta la marea (0-1). Valori editoriali, da validare con le catture reali: vedi docs/fishing-activity.md.",
+  "profiles": [
+    { "name": "Orata", "aliases": ["Sparus aurata"], "water": "mare", "season": [0.2,0.2,0.3,0.5,0.7,0.9,1,1,0.9,0.8,0.5,0.3], "waterTemp": [16, 26], "pref": "alba_tramonto", "tide": 0.7 },
+    { "name": "Spigola", "aliases": ["Branzino", "Dicentrarchus labrax", "Spigola/Branzino"], "water": "mare", "season": [0.5,0.5,0.5,0.6,0.6,0.6,0.5,0.5,0.7,0.9,1,0.8], "waterTemp": [12, 22], "pref": "notte", "tide": 0.9 },
+    { "name": "Sarago", "aliases": ["Diplodus sargus", "Sarago maggiore"], "water": "mare", "season": [0.2,0.2,0.3,0.5,0.7,0.8,0.8,0.8,1,0.9,0.6,0.3], "waterTemp": [15, 24], "pref": "giorno", "tide": 0.6 },
+    { "name": "Occhiata", "aliases": ["Oblada melanura"], "water": "mare", "season": [0.1,0.1,0.2,0.4,0.7,0.9,1,1,0.9,0.7,0.3,0.1], "waterTemp": [17, 26], "pref": "giorno", "tide": 0.4 },
+    { "name": "Mormora", "aliases": ["Lithognathus mormyrus"], "water": "mare", "season": [0.1,0.1,0.2,0.4,0.7,0.9,1,1,0.9,0.7,0.3,0.1], "waterTemp": [16, 25], "pref": "alba_tramonto", "tide": 0.6 },
+    { "name": "Cefalo", "aliases": ["Mugil cephalus", "Muggine"], "water": "mare", "season": [0.4,0.4,0.5,0.6,0.7,0.8,0.8,0.8,0.9,1,0.8,0.5], "waterTemp": [12, 26], "pref": "giorno", "tide": 0.5 },
+    { "name": "Serra", "aliases": ["Pomatomus saltatrix", "Pesce serra"], "water": "mare", "season": [0,0,0.1,0.2,0.5,0.8,1,1,1,0.8,0.3,0], "waterTemp": [18, 27], "pref": "alba_tramonto", "tide": 0.5 },
+    { "name": "Calamaro", "aliases": ["Loligo vulgaris"], "water": "mare", "season": [0.7,0.7,0.6,0.4,0.2,0.1,0.1,0.2,0.4,0.7,0.9,1], "waterTemp": [10, 18], "pref": "notte", "tide": 0.3 },
+    { "name": "Seppia", "aliases": ["Sepia officinalis"], "water": "mare", "season": [0.4,0.6,0.9,1,0.9,0.5,0.2,0.2,0.3,0.4,0.4,0.4], "waterTemp": [11, 20], "pref": "indifferente", "tide": 0.3 },
+    { "name": "Ricciola", "aliases": ["Seriola dumerili"], "water": "mare", "season": [0.1,0.1,0.2,0.3,0.6,0.9,1,1,1,0.8,0.4,0.2], "waterTemp": [19, 27], "pref": "giorno", "tide": 0.4 },
+    { "name": "Palamita", "aliases": ["Sarda sarda"], "water": "mare", "season": [0,0,0.1,0.3,0.5,0.7,0.8,0.9,1,0.9,0.4,0.1], "waterTemp": [17, 24], "pref": "alba_tramonto", "tide": 0.4 },
+    { "name": "Trota", "aliases": ["Trota fario", "Salmo trutta"], "water": "fiume", "season": [0,0.3,0.7,1,1,0.9,0.7,0.6,0.8,0.3,0,0], "waterTemp": [6, 15], "pref": "alba_tramonto", "tide": 0 },
+    { "name": "Cavedano", "aliases": ["Squalius cephalus"], "water": "fiume", "season": [0.3,0.3,0.5,0.8,1,1,1,1,0.9,0.7,0.4,0.3], "waterTemp": [10, 24], "pref": "giorno", "tide": 0 },
+    { "name": "Barbo", "aliases": ["Barbus plebejus"], "water": "fiume", "season": [0.1,0.2,0.5,0.8,1,1,1,0.9,0.8,0.5,0.2,0.1], "waterTemp": [12, 24], "pref": "alba_tramonto", "tide": 0 },
+    { "name": "Carpa", "aliases": ["Cyprinus carpio"], "water": "lago", "season": [0.1,0.2,0.4,0.7,1,1,0.9,0.9,1,0.8,0.4,0.1], "waterTemp": [15, 27], "pref": "alba_tramonto", "tide": 0 },
+    { "name": "Persico", "aliases": ["Persico reale", "Perca fluviatilis"], "water": "lago", "season": [0.4,0.4,0.6,0.8,0.8,0.7,0.6,0.6,0.8,1,0.8,0.5], "waterTemp": [10, 22], "pref": "alba_tramonto", "tide": 0 },
+    { "name": "Luccio", "aliases": ["Esox lucius"], "water": "lago", "season": [0.6,0.6,0.7,0.5,0.4,0.3,0.3,0.4,0.7,1,1,0.8], "waterTemp": [8, 20], "pref": "giorno", "tide": 0 },
+    { "name": "Black bass", "aliases": ["Persico trota", "Micropterus salmoides"], "water": "lago", "season": [0.1,0.1,0.3,0.7,1,1,0.9,0.9,0.9,0.6,0.2,0.1], "waterTemp": [16, 28], "pref": "alba_tramonto", "tide": 0 },
+    { "name": "Siluro", "aliases": ["Silurus glanis"], "water": "lago", "season": [0.1,0.1,0.3,0.6,0.9,1,1,1,0.9,0.6,0.2,0.1], "waterTemp": [16, 28], "pref": "notte", "tide": 0 }
+  ]
+}
