@@ -5,6 +5,7 @@
 //  - singoli campi mancanti nella risposta Google.
 // Il formato di risposta è lo stesso per entrambi i provider; `sources` dice da dove arriva ogni gruppo di campi.
 import AppConfig from '../config.js'
+import { createQuota } from './quota.js'
 
 const config = new AppConfig()
 const GW = 'https://weather.googleapis.com/v1'
@@ -22,17 +23,34 @@ async function getJson(url) {
 const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const pick = (...vs) => { for (const v of vs) if (v != null) return v; return null }
 
-// ── Cache breve in memoria (le coordinate a 2 decimali ≈ 1 km) ────────────────
+// ── Cache in memoria, per cella geografica ────────────────────────────────────
+// Le coordinate si arrotondano a una griglia di 0,05° (≈ 5 km): utenti vicini condividono la stessa cella
+// e la stessa risposta, e le chiamate a Google restano dentro la quota gratuita (10.000 al mese).
+// Le richieste identiche in corso si uniscono (una sola chiamata) e gli errori non restano in cache.
+const CELL = 0.05
+export const cellOf = (lat, lng) => ({
+  lat: Number((Math.round(lat / CELL) * CELL).toFixed(2)),
+  lng: Number((Math.round(lng / CELL) * CELL).toFixed(2)),
+})
 const cache = new Map()
-async function cached(key, ttlMs, fn) {
+async function cached(key, ttlMs, fn, opts = {}) {
   const hit = cache.get(key)
   if (hit && hit.exp > Date.now()) return hit.val
-  const val = await fn()
+  // Quota bloccata: meglio un dato scaduto (fino a 24 h) che nessuna chiamata a Google.
+  if (hit && opts.staleWhenBlocked && googleQuota.isBlocked()) return hit.val
+  const val = fn()
   cache.set(key, { val, exp: Date.now() + ttlMs })
-  if (cache.size > 500) for (const [k, v] of cache) if (v.exp < Date.now()) cache.delete(k)
+  val.catch(() => { if (cache.get(key)?.val === val) { if (hit && opts.staleWhenBlocked) cache.set(key, hit); else cache.delete(key) } })
+  if (cache.size > 800) for (const [k, v] of cache) if (v.exp + 24 * 3600e3 < Date.now()) cache.delete(k)
   return val
 }
-const ck = (lat, lng) => `${Number(lat).toFixed(2)},${Number(lng).toFixed(2)}`
+const ck = (lat, lng) => { const c = cellOf(lat, lng); return `${c.lat.toFixed(2)},${c.lng.toFixed(2)}` }
+
+// ── Quota Google Weather ──────────────────────────────────────────────────────
+// 10.000 richieste gratuite al mese. Contatore persistente su Mongo, avvisi al 70% e 90%, blocco al 95%
+// (vedi utils/quota.js). Bloccato: niente chiamate a Google, si servono i dati ancora in cache (anche scaduti)
+// e per il resto il ripiego Open-Meteo; la risposta porta `degraded: true`.
+export const googleQuota = createQuota({ id: 'googleWeather', label: 'Google Weather API', envPrefix: 'GOOGLE_WEATHER', cfgPrefix: 'google' })
 
 // ── Mappature ─────────────────────────────────────────────────────────────────
 // Condizioni dell'app: sole | nuvoloso | coperto | nebbia | pioggia | vento
@@ -73,9 +91,18 @@ const ymd = d => `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).
 function gUrl(path, lat, lng, extra = '') {
   return `${GW}/${path}?key=${encodeURIComponent(googleKey())}&location.latitude=${lat}&location.longitude=${lng}&unitsSystem=METRIC&languageCode=it${extra}`
 }
-const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 10 * 60e3, () => getJson(gUrl('currentConditions:lookup', lat, lng)))
-const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 30 * 60e3, () => getJson(gUrl('forecast/days:lookup', lat, lng, '&days=10&pageSize=10')))
-const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 30 * 60e3, () => getJson(gUrl('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240')))
+// Ogni chiamata usa il centro della cella (stessa risposta per tutti gli utenti della zona) e passa dal contatore:
+// sopra soglia lancia un errore 429 e il chiamante usa il ripiego Open-Meteo.
+async function gGet(path, lat, lng, extra) {
+  await googleQuota.reserve()   // lancia 429 se la quota è al limite di blocco
+  const c = cellOf(lat, lng)
+  return getJson(gUrl(path, c.lat, c.lng, extra))
+}
+// TTL scelti per la quota: l'attuale cambia di più, i giorni quasi mai.
+export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 15 * 60e3, () => gGet('currentConditions:lookup', lat, lng), { staleWhenBlocked: true })
+export const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 3 * 3600e3, () => gGet('forecast/days:lookup', lat, lng, '&days=10&pageSize=10'), { staleWhenBlocked: true })
+export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gGet('forecast/hours:lookup', lat, lng, '&hours=240&pageSize=240'), { staleWhenBlocked: true })
+export const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 60 * 60e3, () => gGet('history/hours:lookup', lat, lng, '&hours=6&pageSize=6'), { staleWhenBlocked: true })
 
 // ── Open-Meteo (ripiego e dati marini) ────────────────────────────────────────
 async function omDay(lat, lng, date) {
@@ -97,6 +124,7 @@ const settle = p => p.then(v => v, () => null)
 // ── Condizioni attuali (Home) ─────────────────────────────────────────────────
 // → { tempAir, windSpeed (km/h), windDeg, pressure (hPa), waveHeight, wavePeriod, waterTemp, sources }
 export async function getCurrent(lat, lng) {
+  ;({ lat, lng } = cellOf(lat, lng))
   const out = { tempAir: null, windSpeed: null, windDeg: null, pressure: null, waveHeight: null, wavePeriod: null, waterTemp: null }
   const sources = { weather: null, marine: null }
   const useG = !!googleKey()
@@ -130,6 +158,7 @@ export async function getCurrent(lat, lng) {
 // ── Giornata di un'uscita (autofill / «Ricalcola») ────────────────────────────
 // → { condition, tempAir (media max/min), tempMax, tempMin, windSpeed (km/h, max), windDeg, pressure, humidity, waveHeight, wavePeriod, sources }
 export async function getDay(lat, lng, date, hour = 12, marine = false) {
+  ;({ lat, lng } = cellOf(lat, lng))
   const out = { condition: null, tempAir: null, tempMax: null, tempMin: null, windSpeed: null, windDeg: null, pressure: null, humidity: null, waveHeight: null, wavePeriod: null }
   const sources = { weather: null, marine: null }
   const today = new Date().toISOString().split('T')[0]
@@ -185,3 +214,6 @@ export async function getDay(lat, lng, date, hour = 12, marine = false) {
   }
   return { ...out, sources }
 }
+
+// Interni riusati da weatherPanel.js
+export { cached, getJson, gUrl, num, kmh, ymd, pick, settle, ck, googleTypeToCondition as gCondition, wmoToCondition as omCondition, OM, OM_MARINE }
