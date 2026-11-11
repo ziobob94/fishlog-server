@@ -38,6 +38,11 @@ const ListingSchema = new mongoose.Schema({
   location: LocationSchema,
 
   status: { type: String, enum: ['active', 'reserved', 'sold', 'deleted'], default: 'active' },
+  // Chi può vedere l'annuncio: tutti, solo gli amici del venditore, o i membri
+  // dei gruppi scelti (allowedGroups). Senza campo = tutti (annunci esistenti).
+  visibility:    { type: String, enum: ['all', 'friends', 'groups'], default: 'all' },
+  allowedGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
+  // Visualizzazioni uniche: una per utente (vedi ListingView), mai l'autore.
   views:  { type: Number, default: 0 },
 
   media: [MediaSchema]
@@ -46,6 +51,7 @@ const ListingSchema = new mongoose.Schema({
 ListingSchema.index({ status: 1, createdAt: -1 })
 ListingSchema.index({ category: 1 })
 ListingSchema.index({ seller: 1 })
+ListingSchema.index({ visibility: 1, status: 1 })
 ListingSchema.index({ title: 'text', description: 'text' })
 
 export { CATEGORIES }

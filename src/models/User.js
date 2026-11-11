@@ -53,6 +53,10 @@ const UserSchema = new mongoose.Schema({
     siteRequest:         { requested: { type: Boolean, default: false }, at: { type: Date } }
   },
 
+  // Privacy del market: se true (default) chi non è amico può scrivere al venditore
+  // a proposito dei suoi annunci pubblici (visibilità «tutti»).
+  marketMessagesFromStrangers: { type: Boolean, default: true },
+
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
   // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.
   notificationPreferences: {
