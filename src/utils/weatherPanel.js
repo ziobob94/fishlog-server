@@ -5,8 +5,33 @@
 // Fase lunare, illuminazione e trend pressione sono calcolati/derivati qui, così il client non ha logica.
 import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, googleQuota } from './weather.js'
 import { googleKey } from './weather.js'
+import { attachDailyActivity } from './fishingDay.js'
 
 const H = 3600e3
+// Somma e massimo che ignorano i valori mancanti; se manca tutto restituiscono null (mai 0).
+const sumOf = (...vs) => { const n = vs.map(num).filter(v => v != null); return n.length ? n.reduce((a, b) => a + b, 0) : null }
+const maxOf = (...vs) => { const n = vs.map(num).filter(v => v != null); return n.length ? Math.max(...n) : null }
+
+// Codice WMO approssimato per i tipi di condizione Google (il client sceglie l'icona e il testo dal codice WMO).
+// Tipo mancante o sconosciuto → null (il client mostra «nuvoloso» e «Non disponibile», mai un'icona vistosa).
+export function googleTypeToWmo(type) {
+  const t = String(type || '').toUpperCase()
+  if (!t) return null
+  if (/HAIL/.test(t)) return 96
+  if (/THUNDER/.test(t)) return 95
+  if (/SNOW|FLURR|SLEET|BLIZZARD/.test(t)) return 73
+  if (/FOG|HAZE|MIST/.test(t)) return 45
+  if (/HEAVY.*(RAIN|SHOWER)|(RAIN|SHOWER).*HEAVY|MODERATE_TO_HEAVY/.test(t)) return /SHOWER/.test(t) ? 82 : 65
+  if (/SHOWER/.test(t)) return /LIGHT/.test(t) ? 80 : 81
+  if (/DRIZZLE/.test(t)) return 51
+  if (/LIGHT.*RAIN|RAIN.*LIGHT/.test(t)) return 61
+  if (/RAIN/.test(t)) return 63
+  if (t === 'CLEAR' || t === 'SUNNY') return 0
+  if (t === 'MOSTLY_CLEAR' || t === 'MOSTLY_SUNNY') return 1
+  if (t === 'PARTLY_CLOUDY') return 2
+  if (t === 'MOSTLY_CLOUDY' || t === 'CLOUDY' || t === 'OVERCAST') return 3
+  return null
+}
 
 // ── Luna (calcolo locale, precisione ±~1 giorno, più che sufficiente per la pesca) ─
 const SYNODIC = 29.530588853
@@ -47,18 +72,19 @@ export function tideExtremes(series) {
 const omPanel = (lat, lng) => cached(`omp:${ck(lat, lng)}`, 15 * 60e3, () => getJson(
   `${OM}?latitude=${lat}&longitude=${lng}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day`
   + `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,pressure_msl`
-  + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,uv_index_max`
+  + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max`
   + `&forecast_days=16&past_hours=6&wind_speed_unit=kmh&timezone=auto`))
 
-const omMarine = (lat, lng) => cached(`omm2:${ck(lat, lng)}`, 30 * 60e3, () => getJson(
+const omMarine = (lat, lng) => cached(`omm3:${ck(lat, lng)}`, 30 * 60e3, () => getJson(
   `${OM_MARINE}?latitude=${lat}&longitude=${lng}`
   + `&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction`
-  + `&hourly=wave_height,wave_period,sea_surface_temperature,sea_level_height_msl&daily=wave_height_max&forecast_days=16&timezone=auto`))
+  + `&hourly=wave_height,wave_period,sea_surface_temperature,sea_level_height_msl&daily=wave_height_max&forecast_days=8&timezone=auto`))
 
 // ── Costruzione risposta ──────────────────────────────────────────────────────
 function fromGoogle(c, hours, days) {
   const cur = c ? {
     condition: gCondition(c.weatherCondition?.type, kmh(c.wind?.speed)),
+    wmo: googleTypeToWmo(c.weatherCondition?.type),
     description: c.weatherCondition?.description?.text ?? null,
     isDay: typeof c.isDaytime === 'boolean' ? c.isDaytime : null,
     temp: num(c.temperature?.degrees),
@@ -80,6 +106,7 @@ function fromGoogle(c, hours, days) {
     hour: h.displayDateTime?.hours ?? null,
     source: 'google',
     condition: gCondition(h.weatherCondition?.type, kmh(h.wind?.speed)),
+    wmo: googleTypeToWmo(h.weatherCondition?.type),
     temp: num(h.temperature?.degrees),
     precipProbability: num(h.precipitation?.probability?.percent),
     precipMm: num(h.precipitation?.qpf?.quantity),
@@ -95,6 +122,9 @@ function fromGoogle(c, hours, days) {
       date: d.displayDate ? ymd(d.displayDate) : null,
       source: 'google',
       condition: gCondition(day.weatherCondition?.type || night.weatherCondition?.type, ws.length ? Math.max(...ws) : 0),
+      wmo: googleTypeToWmo(day.weatherCondition?.type || night.weatherCondition?.type),
+      precipSum: sumOf(day.precipitation?.qpf?.quantity, night.precipitation?.qpf?.quantity),
+      windGust: maxOf(kmh(day.wind?.gust), kmh(night.wind?.gust)),
       tempMax: num(d.maxTemperature?.degrees),
       tempMin: num(d.minTemperature?.degrees),
       precipProbability: num(day.precipitation?.probability?.percent),
@@ -115,6 +145,7 @@ function fromOpenMeteo(om) {
   const hourly = (h.time || []).slice(i0, i0 + 168).map((t, k) => ({
     time: t, date: t.slice(0, 10), hour: Number(t.slice(11, 13)), source: 'open-meteo',
     condition: omCondition(h.weather_code?.[i0 + k], h.wind_speed_10m?.[i0 + k]),
+    wmo: num(h.weather_code?.[i0 + k]),
     temp: num(h.temperature_2m?.[i0 + k]),
     precipProbability: num(h.precipitation_probability?.[i0 + k]),
     precipMm: num(h.precipitation?.[i0 + k]),
@@ -126,6 +157,8 @@ function fromOpenMeteo(om) {
   const daily = (d.time || []).slice(0, 15).map((date, k) => ({
     date, source: 'open-meteo',
     condition: omCondition(d.weather_code?.[k], d.wind_speed_10m_max?.[k]),
+    wmo: num(d.weather_code?.[k]),
+    precipSum: num(d.precipitation_sum?.[k]), windGust: num(d.wind_gusts_10m_max?.[k]),
     tempMax: num(d.temperature_2m_max?.[k]), tempMin: num(d.temperature_2m_min?.[k]),
     precipProbability: num(d.precipitation_probability_max?.[k]),
     windSpeed: num(d.wind_speed_10m_max?.[k]),
@@ -133,6 +166,7 @@ function fromOpenMeteo(om) {
   }))
   const cur = {
     condition: omCondition(c.weather_code, c.wind_speed_10m),
+    wmo: num(c.weather_code),
     description: null,
     isDay: c.is_day == null ? null : !!c.is_day,
     temp: num(c.temperature_2m), feelsLike: num(c.apparent_temperature), humidity: num(c.relative_humidity_2m),
@@ -156,12 +190,12 @@ function buildMarine(m) {
     currentSpeed: num(c.ocean_current_velocity), currentDeg: num(c.ocean_current_direction),
   }
   const hh = m.hourly || {}
-  out.dailyWaveMax = (m.daily?.time || []).map((date, i) => ({ date, waveHeightMax: num(m.daily.wave_height_max?.[i]) }))
-  const series = (hh.time || []).slice(0, 48).map((time, i) => ({ time, h: num(hh.sea_level_height_msl?.[i]) }))
+  out.dailyWaveMax = (m.daily?.time || []).slice(0, 7).map((date, i) => ({ date, waveHeightMax: num(m.daily.wave_height_max?.[i]) }))
+  const series = (hh.time || []).slice(0, 168).map((time, i) => ({ time, h: num(hh.sea_level_height_msl?.[i]) }))
   const hasTide = series.some(s => s.h != null) && new Set(series.map(s => s.h)).size > 3
   out.tides = hasTide ? { approximate: true, series: series.filter(s => s.h != null).map(s => ({ time: s.time, height: s.h })), extremes: tideExtremes(series) } : null
-  // Altezza e periodo dell'onda ora per ora (48 h) per il grafico del mare; vuota se il modello non copre il punto.
-  const waves = (hh.time || []).slice(0, 48).map((time, i) => ({ time, height: num(hh.wave_height?.[i]), period: num(hh.wave_period?.[i]) }))
+  // Altezza, periodo dell'onda e temperatura del mare ora per ora (7 giorni, dalla mezzanotte di oggi) per i grafici del mare e per il dettaglio del giorno; vuota se il modello non copre il punto.
+  const waves = (hh.time || []).slice(0, 168).map((time, i) => ({ time, height: num(hh.wave_height?.[i]), period: num(hh.wave_period?.[i]), seaTemp: num(hh.sea_surface_temperature?.[i]) }))
   out.waves = waves.some(w => w.height != null) ? waves : []
   out.available = [out.waveHeight, out.wavePeriod, out.seaTemp].some(v => v != null)
   return out.available ? out : empty
@@ -195,7 +229,7 @@ export async function getOverview(reqLat, reqLng) {
     else {
       const have = new Set(w.daily.map(d => d.date))
       const byDate = new Map(om.daily.map(d => [d.date, d]))
-      w.daily = w.daily.map(d => ({ ...d, sunrise: d.sunrise ?? byDate.get(d.date)?.sunrise ?? null, sunset: d.sunset ?? byDate.get(d.date)?.sunset ?? null }))
+      w.daily = w.daily.map(d => { const o = byDate.get(d.date); return { ...d, sunrise: d.sunrise ?? o?.sunrise ?? null, sunset: d.sunset ?? o?.sunset ?? null, precipSum: d.precipSum ?? o?.precipSum ?? null, windGust: d.windGust ?? o?.windGust ?? null, wmo: d.wmo ?? o?.wmo ?? null } })
       const more = om.daily.filter(d => !have.has(d.date) && d.date > w.daily[w.daily.length - 1].date)
       if (more.length) { w.daily = [...w.daily, ...more].slice(0, 15); extended = true }
     }
@@ -207,7 +241,7 @@ export async function getOverview(reqLat, reqLng) {
   const marine = buildMarine(marineRaw)
   const today = w.daily[0] || {}
   const moon = moonPhase()
-  return {
+  return attachDailyActivity({
     location: { lat: reqLat, lng: reqLng },
     updatedAt: new Date().toISOString(),
     current: w.cur,
@@ -222,5 +256,5 @@ export async function getOverview(reqLat, reqLng) {
     },
     degraded: useG && googleQuota.isBlocked(), // quota Google al blocco: dati da cache o da ripiego
     sources: { weather: source, marine: marine.available ? 'open-meteo' : null, extended: extended ? 'open-meteo' : null },
-  }
+  })
 }

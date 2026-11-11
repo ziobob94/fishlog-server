@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "_nota": "Regole dell'attività dei pesci. Sono una stima indicativa e NON sono validate con dati reali: vedi docs/fishing-activity.md. Si sovrascrivono (merge profondo) con la chiave fishing.rules di config/local.json.",
+  "minFactors": 2,
+  "weights": { "light": 0.30, "tide": 0.25, "pressure": 0.20, "wind": 0.15, "waterTemp": 0.10 },
+  "levels": [
+    { "level": 1, "max": 0.30, "label": "Scarsa" },
+    { "level": 2, "max": 0.45, "label": "Bassa" },
+    { "level": 3, "max": 0.60, "label": "Media" },
+    { "level": 4, "max": 0.75, "label": "Buona" },
+    { "level": 5, "max": 1.01, "label": "Ottima" }
+  ],
+  "verdict": { "favorable": 0.62, "unfavorable": 0.40 },
+  "light": {
+    "dawnDuskWindowMin": 90,
+    "peak": 1.0,
+    "day": 0.45,
+    "night": 0.35,
+    "nightMoonBonus": 0.25
+  },
+  "tide": {
+    "slackBelow": 0.15,
+    "slackScore": 0.2,
+    "minScore": 0.2
+  },
+  "pressure": {
+    "stableBand": 1.0,
+    "fallingSlow": { "from": -3.0, "score": 1.0 },
+    "fallingFast": { "score": 0.4 },
+    "stable": { "score": 0.6 },
+    "risingSlow": { "to": 3.0, "score": 0.55 },
+    "risingFast": { "score": 0.35 }
+  },
+  "wind": { "idealMaxKmh": 15, "badKmh": 35, "floor": 0.1 },
+  "waterTemp": { "min": 6, "optimalMin": 14, "optimalMax": 22, "max": 30, "floor": 0.1 },
+  "species": {
+    "weights": { "season": 0.5, "waterTemp": 0.3, "conditions": 0.2 },
+    "userHistory": { "radiusKm": 15, "bonusPerCatch": 0.04, "maxBonus": 0.2 },
+    "levels": [
+      { "key": "meno_probabile", "label": "Meno probabile", "dots": 1, "max": 0.35 },
+      { "key": "possibile", "label": "Possibile", "dots": 1, "max": 0.55 },
+      { "key": "probabile", "label": "Probabile", "dots": 2, "max": 0.75 },
+      { "key": "molto_probabile", "label": "Molto probabile", "dots": 3, "max": 1.01 }
+    ],
+    "maxItems": 8,
+    "minScore": 0.25
+  }
+}

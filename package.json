@@ -3,6 +3,7 @@
   "version": "1.31.0",
   "type": "module",
   "scripts": {
+    "test": "node --test \"tests/**/*.test.js\"",
     "dev": "cross-env NODE_ENV=development && node --watch src/index.js",
     "staging": "cross-env NODE_ENV=staging && node src/index.js",
     "start": "cross-env NODE_ENV=production && node src/index.js",
