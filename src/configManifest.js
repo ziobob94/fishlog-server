@@ -36,6 +36,7 @@ export const CONFIG_MANIFEST = [
   // chiamate a Google si fermano e restano cache e ripiego Open-Meteo. Il contatore si azzera a ogni mese.
   { key: 'google.weatherMonthlyQuota', group: 'Google Weather', label: 'Quota mensile (richieste)', type: 'number', secret: false },
   { key: 'google.weatherAlertPcts',    group: 'Google Weather', label: 'Soglie di avviso in % (es. 70,90)', type: 'string', secret: false },
+  { key: 'google.weatherAlertEmail', group: 'Google Weather', label: 'Email per gli avvisi di quota (vuoto = tutti gli admin)', type: 'string', secret: false },
   { key: 'google.weatherStopPct',      group: 'Google Weather', label: 'Blocco automatico al % della quota', type: 'number', secret: false },
 
   { key: 'features.passwordAuth', group: 'Feature flags', label: 'Login con email e password abilitato', type: 'boolean', secret: false },

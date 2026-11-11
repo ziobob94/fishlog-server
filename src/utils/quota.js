@@ -1,7 +1,7 @@
 // Contatore mensile di richieste a un servizio a quota (oggi: Google Weather, 10.000 gratuite al mese).
 // - Il conteggio vive su MongoDB (RuntimeConfig, chiave `usage.<id>`) con incremento atomico: giusto anche con più
 //   processi (PM2 cluster) e dopo un riavvio; si azzera da solo al cambio di mese. Senza database resta in memoria.
-// - Avvisi a soglie percentuali (default 70% e 90%): una sola volta a soglia e mese, nei log e per email agli admin.
+// - Avvisi a soglie percentuali (default 70% e 90%): una sola volta a soglia e mese, nei log e per email al destinatario configurato (o agli admin).
 // - Blocco prima del limite (default 95%): `reserve()` rifiuta la chiamata PRIMA di farla, quindi la quota non viene mai superata.
 // Soglie configurabili da admin (Configurazione → Google Weather) o da env.
 import mongoose from 'mongoose'
@@ -51,7 +51,11 @@ export function createQuota({ id, label, envPrefix, cfgPrefix, defaultQuota = 10
     return { month: m, ...(doc?.value || { count: 0, alerts: [] }) }
   }
 
-  async function admins() {
+  // Destinatari: l'indirizzo (o gli indirizzi separati da virgola) impostato in Admin → Configurazione → Google Weather
+  // (`google.weatherAlertEmail`) o in env `<PREFISSO>_ALERT_EMAIL`; se vuoto, tutti gli admin.
+  async function recipients() {
+    const set = String(process.env[`${envPrefix}_ALERT_EMAIL`] ?? config.get(`${cfgPrefix}.weatherAlertEmail`, '') ?? '').split(/[\s,;]+/).filter(e => /^\S+@\S+\.\S+$/.test(e))
+    if (set.length) return set
     if (!dbUp()) return []
     try { return (await User.find({ role: 'admin' }).select('email').lean()).map(u => u.email).filter(Boolean) } catch { return [] }
   }
@@ -71,7 +75,7 @@ export function createQuota({ id, label, envPrefix, cfgPrefix, defaultQuota = 10
       ? `${label}: raggiunto il ${pct}% della quota mensile (${count}/${st.quota}). Le chiamate sono BLOCCATE fino al prossimo mese: restano cache e ripiego Open-Meteo.`
       : `${label}: usato il ${pct}% della quota mensile (${count}/${st.quota}). Al ${st.stopPct}% le chiamate verranno bloccate.`
     console.warn(`[quota] ${msg}`)
-    const to = await admins()
+    const to = await recipients()
     if (to.length) send({ to: to.join(','), subject: `[Fishlog] ${stop ? 'Quota bloccata' : 'Avviso quota'}: ${label} al ${pct}%`, html: `<p>${msg}</p><p>Controlla il consumo in Admin → Meteo e quota, oppure alza la quota/soglie in Configurazione.</p>` }).catch(e => console.warn('[quota] email non inviata:', e?.message))
   }
 
