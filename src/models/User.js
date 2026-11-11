@@ -7,6 +7,10 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String },
   displayName:  { type: String },
   avatar:       { type: String },
+  // Profilo pubblico (bacheca): nome utente univoco, bio breve e luogo.
+  username:     { type: String, unique: true, sparse: true, lowercase: true, trim: true, match: /^[a-z0-9._]{3,30}$/ },
+  bio:          { type: String, trim: true, maxlength: 150 },
+  location:     { name: { type: String, trim: true, maxlength: 80 }, lat: Number, lng: Number },
   providers: {
     google:   { id: String },
     facebook: { id: String }
