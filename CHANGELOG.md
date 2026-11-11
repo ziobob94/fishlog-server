@@ -1,3 +1,15 @@
+# [1.30.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.1...server-v1.30.0) (2026-11-11)
+
+
+### Bug Fixes
+
+* ordina le uscite dalla più recente anche a parità di data ([856be21](https://github.com/ziobob94/fishlog-server/commit/856be21e6ef62cfae014952620227d50931b4ee9))
+
+
+### Features
+
+* seeder di dati di test (npm run seed / seed:clean) ([9d129d6](https://github.com/ziobob94/fishlog-server/commit/9d129d6d21593236a0634d7e71552d2db19a655c))
+
 ## [1.29.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.29.0...server-v1.29.1) (2026-11-11)
 
 
