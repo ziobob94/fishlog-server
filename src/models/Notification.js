@@ -6,7 +6,7 @@ import mongoose from 'mongoose'
 // (es. { conversationId } per chat_message, { requestId } per friend_request).
 const NotificationSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type:      { type: String, enum: ['friend_request', 'friend_accept', 'chat_message', 'post_like', 'post_comment'], required: true },
+  type:      { type: String, enum: ['friend_request', 'friend_accept', 'chat_message', 'post_like', 'post_comment', 'comment_like', 'comment_reply', 'comment_reaction'], required: true },
   actor:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   data:      { type: mongoose.Schema.Types.Mixed },
   read:      { type: Boolean, default: false }

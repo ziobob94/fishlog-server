@@ -7,9 +7,22 @@ const ResponseSchema = new mongoose.Schema({
 
 // Commento generico, valido su qualunque post (a differenza di "responses",
 // che restano solo l'adesione/RSVP sugli eventi).
+// Le risposte sono commenti con `parent` valorizzato (un solo livello di
+// annidamento); `replyTo` è l'utente a cui si risponde (menzione).
+export const COMMENT_REACTIONS = ['👍', '❤️', '😂', '😮', '🎣']
+
+const CommentReactionSchema = new mongoose.Schema({
+  user:  { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  emoji: { type: String, enum: COMMENT_REACTIONS, required: true }
+}, { _id: false })
+
 const CommentSchema = new mongoose.Schema({
-  user:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  message: { type: String, required: true, trim: true }
+  user:      { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  message:   { type: String, required: true, trim: true },
+  parent:    { type: mongoose.Schema.Types.ObjectId },
+  replyTo:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  likes:     [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  reactions: [CommentReactionSchema]
 }, { timestamps: true })
 
 // Adesione strutturata a un evento (partecipo/forse/non partecipo + ospiti),
