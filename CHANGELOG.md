@@ -1,3 +1,10 @@
+## [1.33.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.33.0...server-v1.33.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* link email nuovo commento/like alla rotta /post/:id ([#28](https://github.com/ziobob94/fishlog-server/issues/28)) ([36a82ee](https://github.com/ziobob94/fishlog-server/commit/36a82eecbd1f3c6b54fdd95cd610ea72b6c5810a))
+
 # [1.33.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.2...server-v1.33.0) (2026-11-12)
 
 
