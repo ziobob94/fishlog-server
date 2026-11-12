@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.33.1...server-v1.34.0) (2026-11-12)
+
+
+### Features
+
+* **meteo:** ICON-2I come fonte principale per l'Italia ([52c6ab2](https://github.com/ziobob94/fishlog-server/commit/52c6ab253d88693de7dce9da9076357bce922d68))
+
 ## [1.33.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.33.0...server-v1.33.1) (2026-11-12)
 
 
