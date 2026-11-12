@@ -13,6 +13,18 @@ const SpeciesSchema = new mongoose.Schema({
   source:         { type: String, enum: ['gbif', 'inaturalist', 'manual'], default: 'gbif' },
   // Specie comuni usate come suggerimento di default quando non c'è
   // storico di catture per una zona (es. prima uscita registrata).
+  // Record di taglia/peso (es. IGFA all-tackle). Compilare SOLO con dati verificabili e fonte citata;
+  // se incerto lasciare vuoto. Nessun valore è precaricato dal seed.
+  record: {
+    weightKg:  { type: Number },
+    lengthCm:  { type: Number },
+    place:     { type: String },
+    year:      { type: Number },
+    angler:    { type: String },
+    source:    { type: String },   // es. 'IGFA All-Tackle', con attribuzione
+    sourceUrl: { type: String },
+    verifiedAt:{ type: Date }
+  },
   popular:        { type: Boolean, default: false, index: true }
 }, { timestamps: true })
 
