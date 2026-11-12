@@ -1,5 +1,5 @@
 import Session from '../models/Session.js'
-import Post from '../models/Post.js'
+import Post, { COMMENT_REACTIONS } from '../models/Post.js'
 import Notification from '../models/Notification.js'
 import { sendToUser } from '../ws/hub.js'
 import Group from '../models/Group.js'
@@ -30,12 +30,12 @@ async function savedSet(userId) {
 
 // Notifica in app (e in realtime) all'autore del post per mi piace e commenti.
 // Non notifica l'autore se è lui stesso ad agire.
-async function notifyPostActivity(post, actorId, type, data = {}) {
-  if (post.author.toString() === String(actorId)) return
+async function notifyPostActivity(post, actorId, type, data = {}, recipient = post.author) {
+  if (String(recipient) === String(actorId)) return
   const notification = await new Notification({
-    recipient: post.author, type, actor: actorId, data: { postId: post._id, ...data }
+    recipient, type, actor: actorId, data: { postId: post._id, ...data }
   }).save()
-  sendToUser(post.author, { type: 'notification', payload: notification })
+  sendToUser(recipient, { type: 'notification', payload: notification })
 }
 
 // Avvisa l'autore del post via email, se ha un'email, non è lui stesso ad
@@ -139,7 +139,7 @@ export default async function postRoutes(app) {
       .populate('author', 'displayName avatar')
       .populate('session', 'title date location.name totalCatches catches._id catches.species catches.lengthCm')
       .populate('allowedGroups', 'name')
-      .populate('comments.user', 'displayName avatar')
+      .populate('comments.user comments.replyTo', 'displayName avatar')
       .populate('responses.user', 'displayName avatar')
       .populate('event.attendees.user', 'displayName avatar')
       .lean()
@@ -224,7 +224,7 @@ export default async function postRoutes(app) {
       .populate('session', 'title date location.name totalCatches catches._id catches.species catches.lengthCm')
       .populate('allowedGroups', 'name')
       .populate('responses.user', 'displayName avatar')
-      .populate('comments.user', 'displayName avatar')
+      .populate('comments.user comments.replyTo', 'displayName avatar')
       .populate('event.attendees.user', 'displayName avatar')
       .lean()
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
@@ -304,21 +304,86 @@ export default async function postRoutes(app) {
     const post = await Post.findOne({ _id: req.params.id, ...filter })
     if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
 
-    const { message } = req.body
+    const { message, parentId } = req.body
     if (!message?.trim()) return reply.status(400).send({ error: 'Messaggio obbligatorio' })
 
-    post.comments.push({ user: req.user.sub, message: message.trim() })
+    // Risposta: un solo livello. Se si risponde a una risposta, il commento
+    // resta sotto la radice e l'utente a cui si risponde diventa `replyTo`.
+    let parent, replyTo
+    if (parentId) {
+      const target = post.comments.id(parentId)
+      if (!target) return reply.status(404).send({ error: 'Commento non trovato' })
+      parent = target.parent || target._id
+      replyTo = target.user
+    }
+
+    post.comments.push({ user: req.user.sub, message: message.trim(), parent, replyTo })
     await post.save()
-    await post.populate('comments.user', 'displayName avatar')
+    await post.populate('comments.user comments.replyTo', 'displayName avatar')
 
-    notifyPostActivity(post, req.user.sub, 'post_comment', { preview: message.trim().slice(0, 120) })
-      .catch(err => app.log.error(err, 'Notifica commento fallita'))
+    const preview = message.trim().slice(0, 120)
+    if (replyTo) {
+      notifyPostActivity(post, req.user.sub, 'comment_reply', { preview }, replyTo)
+        .catch(err => app.log.error(err, 'Notifica risposta fallita'))
+    }
+    // L'autore del post non riceve due notifiche se è già il destinatario della risposta
+    if (!replyTo || String(replyTo._id || replyTo) !== String(post.author)) {
+      notifyPostActivity(post, req.user.sub, 'post_comment', { preview })
+        .catch(err => app.log.error(err, 'Notifica commento fallita'))
 
-    notifyPostAuthor(post.author, req.user.sub, 'emailComments', () =>
-      newCommentEmail(req.user.name, message.trim(), `${CLIENT_URL}/post/${post._id}`)
-    ).catch(err => app.log.error(err, 'Invio email nuovo commento fallito'))
+      notifyPostAuthor(post.author, req.user.sub, 'emailComments', () =>
+        newCommentEmail(req.user.name, message.trim(), `${CLIENT_URL}/post/${post._id}`)
+      ).catch(err => app.log.error(err, 'Invio email nuovo commento fallito'))
+    }
 
     return reply.status(201).send(post.comments[post.comments.length - 1])
+  })
+
+  // POST /api/posts/:id/comments/:commentId/like — mi piace al commento (toggle)
+  app.post('/:id/comments/:commentId/like', auth, async (req, reply) => {
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter })
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return reply.status(404).send({ error: 'Commento non trovato' })
+
+    const userId = req.user.sub
+    const already = comment.likes.some(id => id.toString() === userId)
+    if (already) comment.likes = comment.likes.filter(id => id.toString() !== userId)
+    else comment.likes.push(userId)
+    await post.save()
+
+    if (!already) {
+      notifyPostActivity(post, userId, 'comment_like', { commentId: comment._id, preview: comment.message.slice(0, 120) }, comment.user)
+        .catch(err => app.log.error(err, 'Notifica like commento fallita'))
+    }
+    return { liked: !already, count: comment.likes.length, likes: comment.likes }
+  })
+
+  // POST /api/posts/:id/comments/:commentId/reactions — reazione emoji (una per utente;
+  // stessa emoji = la toglie, altra emoji = la sostituisce)
+  app.post('/:id/comments/:commentId/reactions', auth, async (req, reply) => {
+    const { emoji } = req.body || {}
+    if (!COMMENT_REACTIONS.includes(emoji)) return reply.status(400).send({ error: 'Reazione non valida' })
+
+    const filter = await visibilityFilter(req.user)
+    const post = await Post.findOne({ _id: req.params.id, ...filter })
+    if (!post) return reply.status(404).send({ error: 'Post non trovato o non accessibile' })
+    const comment = post.comments.id(req.params.commentId)
+    if (!comment) return reply.status(404).send({ error: 'Commento non trovato' })
+
+    const userId = req.user.sub
+    const mine = comment.reactions.find(r => r.user.toString() === userId)
+    comment.reactions = comment.reactions.filter(r => r.user.toString() !== userId)
+    const added = !(mine && mine.emoji === emoji)
+    if (added) comment.reactions.push({ user: userId, emoji })
+    await post.save()
+
+    if (added) {
+      notifyPostActivity(post, userId, 'comment_reaction', { commentId: comment._id, emoji, preview: comment.message.slice(0, 120) }, comment.user)
+        .catch(err => app.log.error(err, 'Notifica reazione fallita'))
+    }
+    return { reactions: comment.reactions }
   })
 
   // DELETE /api/posts/:id/comments/:commentId — solo autore del commento, dell'post o admin
@@ -332,7 +397,9 @@ export default async function postRoutes(app) {
     const isCommentAuthor = comment.user.toString() === req.user.sub
     if (!isCommentAuthor && !canEdit(req.user, post)) return reply.status(403).send({ error: 'Permesso negato' })
 
-    comment.deleteOne()
+    // Eliminando un commento si eliminano anche le sue risposte
+    const id = comment._id.toString()
+    post.comments = post.comments.filter(c => c._id.toString() !== id && c.parent?.toString() !== id)
     await post.save()
     return { deleted: true }
   })
