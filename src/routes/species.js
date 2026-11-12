@@ -116,6 +116,18 @@ export default async function speciesRoutes(app) {
     return { data }
   })
 
+  // GET /api/species/all?page=&limit= — catalogo in ordine alfabetico (scheda «Tutte»), solo specie con nome comune italiano
+  app.get('/all', auth, async (req) => {
+    const limit = Math.min(60, Math.max(1, parseInt(req.query.limit, 10) || 30))
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const filter = { commonNameIt: { $exists: true, $nin: [null, ''] } }
+    const [data, total] = await Promise.all([
+      Species.find(filter).collation({ locale: 'it', strength: 1 }).sort({ commonNameIt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Species.countDocuments(filter)
+    ])
+    return { data, page, total, hasMore: page * limit < total }
+  })
+
   // GET /api/species/seasonal?lat=&lng=&month=1-12 — «In stagione»: specie più comuni del mese per la zona
   // (macro-area dalla latitudine; senza posizione, Italia). Dato indicativo: curve editoriali in
   // src/data/speciesProfiles.json, non validate con catture reali. Ordine: livello, catture dell'utente, nome.
