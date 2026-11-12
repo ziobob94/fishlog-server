@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.34.0...server-v1.35.0) (2026-11-12)
+
+
+### Features
+
+* **posts:** like, risposte e reazioni ai commenti ([d9db5fd](https://github.com/ziobob94/fishlog-server/commit/d9db5fdc6336b10039674b4b2f8a43cba82bba86))
+
 # [1.34.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.33.1...server-v1.34.0) (2026-11-12)
 
 
