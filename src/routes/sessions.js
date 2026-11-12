@@ -171,14 +171,20 @@ export default async function sessionRoutes(app) {
   // più spesso a vuoto, perché serve comunque contenuto vero.
   app.get('/leaderboard', auth, async (req) => {
     const { period = 'all' } = req.query
-    const match = { visibility: 'users', hidden: false, userId: { $ne: null } }
+    // Solo uscite chiuse: una pescata ancora in corso non è "pubblicata".
+    const match = { visibility: 'users', hidden: false, status: 'closed', userId: { $ne: null } }
     if (period === 'week' || period === 'month') match.date = { $gte: periodStart(period) }
 
     const rows = await Session.aggregate([
       { $match: match },
       { $addFields: {
           catchesInSession: { $size: { $ifNull: ['$catches', []] } },
-          hasMedia: { $gt: [{ $size: { $ifNull: ['$media', []] } }, 0] }
+          // Foto/video dell'uscita o di una sua cattura (come in /rankings).
+          hasMedia: { $gt: [{ $add: [
+            { $size: { $ifNull: ['$media', []] } },
+            { $reduce: { input: { $ifNull: ['$catches', []] }, initialValue: 0,
+                in: { $add: ['$$value', { $size: { $ifNull: ['$$this.media', []] } }] } } }
+          ] }, 0] }
         }
       },
       { $group: {
