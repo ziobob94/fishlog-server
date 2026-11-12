@@ -1,99 +1,71 @@
-// Popola la cache Species con un set iniziale di pesci comuni (mare e acqua dolce,
-// non solo Mediterraneo), risolvendo ogni voce su GBIF per key/descrizione/immagine.
-// Il resto del catalogo si arricchisce da solo on-demand via GET /api/species/search.
+// Popola/aggiorna il catalogo Species con le specie curate in scripts/data/italianSpecies.js
+// (pesci di interesse per la pesca sportiva: mare e acqua dolce) con nome italiano, alias,
+// tipo di acqua e descrizione in italiano. IDEMPOTENTE: si può rilanciare su un DB esistente,
+// aggiorna i record trovati per nome scientifico (o per gbifKey) senza creare duplicati.
+// Le voci già presenti NON perdono immagine né gbifKey. La foto resta on-demand
+// (GET /api/species/:key/detail) o si recupera con --images (chiama GBIF, più lento).
 //
-// Uso: node scripts/seedSpecies.js
+// Uso: node scripts/seedSpecies.js [--images] [--dry-run]
 
 import AppConfig from '../src/config.js'
-const cfg = new AppConfig()
-
 import mongoose from 'mongoose'
 import Species from '../src/models/Species.js'
 import { searchGbif, fetchGbifDetail } from '../src/utils/gbif.js'
+import { ITALIAN_SPECIES } from './data/italianSpecies.js'
+import { DESCRIPTIONS } from './data/italianSpeciesDescriptions.js'
 
-// scientificName -> nome comune italiano (in inglese usiamo quello restituito da GBIF)
-const STARTER_SPECIES = {
-  'Sparus aurata':          'Orata',
-  'Dicentrarchus labrax':   'Spigola',
-  'Diplodus sargus':        'Sarago',
-  'Umbrina cirrosa':        'Ombrina',
-  'Mullus barbatus':        'Triglia',
-  'Scomber scombrus':       'Sgombro',
-  'Thunnus thynnus':        'Tonno rosso',
-  'Xiphias gladius':        'Pesce spada',
-  'Seriola dumerili':       'Ricciola',
-  'Sarda sarda':            'Palamita',
-  'Pomatomus saltatrix':    'Pesce serra',
-  'Epinephelus marginatus': 'Cernia bruna',
-  'Solea solea':            'Sogliola',
-  'Anguilla anguilla':      'Anguilla',
-  'Merluccius merluccius':  'Nasello',
-  'Gadus morhua':           'Merluzzo',
-  'Sander lucioperca':      'Lucioperca',
-  'Esox lucius':            'Luccio',
-  'Silurus glanis':         'Siluro',
-  'Cyprinus carpio':        'Carpa',
-  'Salmo trutta':           'Trota fario',
-  'Oncorhynchus mykiss':    'Trota iridea',
-  'Salmo salar':            'Salmone atlantico',
-  'Micropterus salmoides':  'Black bass'
-}
-
+const WITH_IMAGES = process.argv.includes('--images')
+const DRY = process.argv.includes('--dry-run')
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-async function seedOne(scientificName, commonNameIt) {
-  const matches = await searchGbif(scientificName)
-  const match = matches.find(m => m.scientificName?.startsWith(scientificName)) || matches[0]
-  if (!match) {
-    console.warn(`[seed] nessun risultato GBIF per "${scientificName}"`)
-    return
-  }
+async function seedOne([scientificName, commonNameIt, aliasesIt, waterType, popular]) {
+  const description = DESCRIPTIONS[scientificName]
+  const fields = { commonNameIt, aliasesIt: aliasesIt.length ? aliasesIt : undefined, waterType, popular, description }
+  Object.keys(fields).forEach(k => fields[k] === undefined && delete fields[k])
 
-  const existing = await Species.findOne({ gbifKey: match.gbifKey })
-  if (existing?.description && existing?.imageUrl) {
-    if (!existing.popular) await Species.updateOne({ gbifKey: match.gbifKey }, { $set: { popular: true } })
-    console.log(`[seed] già presente: ${scientificName}`)
-    return
-  }
+  // Cerca un record già esistente (es. importato da GBIF) per nome scientifico: il nome GBIF
+  // può avere l'autore in coda ("Sparus aurata Linnaeus, 1758").
+  let existing = await Species.findOne({ scientificName: new RegExp('^' + esc(scientificName) + '(\\s|$)', 'i') })
 
-  const detail = await fetchGbifDetail(match.gbifKey)
-
-  await Species.findOneAndUpdate(
-    { gbifKey: match.gbifKey },
-    {
-      $set: {
-        scientificName: match.scientificName,
-        commonNameIt,
-        commonNameEn: match.commonNameEn || existing?.commonNameEn || null,
-        description: detail.description || existing?.description || null,
-        imageUrl: detail.imageUrl || existing?.imageUrl || null,
-        source: 'gbif',
-        popular: true
+  if (!existing && WITH_IMAGES) {
+    const matches = await searchGbif(scientificName)
+    const m = matches.find(x => x.scientificName?.startsWith(scientificName))
+    if (m) {
+      existing = await Species.findOne({ gbifKey: m.gbifKey })
+      if (!existing) {
+        const detail = await fetchGbifDetail(m.gbifKey)
+        fields.gbifKey = m.gbifKey
+        fields.imageUrl = detail.imageUrl || undefined
+        fields.commonNameEn = m.commonNameEn || undefined
+        fields.scientificName = m.scientificName
       }
-    },
-    { upsert: true }
-  )
-  console.log(`[seed] ok: ${commonNameIt} (${scientificName}) -> gbifKey ${match.gbifKey}`)
+      await sleep(300)
+    }
+  }
+
+  if (DRY) return existing ? 'update' : 'create'
+  if (existing) {
+    // Non sovrascrivere un popular già true con false.
+    if (existing.popular) fields.popular = true
+    await Species.updateOne({ _id: existing._id }, { $set: fields })
+    return 'update'
+  }
+  await Species.create({ scientificName, source: 'manual', ...fields })
+  return 'create'
 }
 
 async function main() {
+  const cfg = new AppConfig()
   await mongoose.connect(cfg.get('mongodb.url'))
-  console.log('MongoDB connesso, avvio seed specie...')
-
-  for (const [scientificName, commonNameIt] of Object.entries(STARTER_SPECIES)) {
-    try {
-      await seedOne(scientificName, commonNameIt)
-    } catch (err) {
-      console.error(`[seed] errore su "${scientificName}":`, err.message)
-    }
-    await sleep(300) // rispetta i rate limit di GBIF
+  console.log(`MongoDB connesso, seed di ${ITALIAN_SPECIES.length} specie${DRY ? ' (dry-run)' : ''}...`)
+  const counts = { create: 0, update: 0, error: 0 }
+  for (const row of ITALIAN_SPECIES) {
+    try { counts[await seedOne(row)]++ }
+    catch (err) { counts.error++; console.error(`[seed] errore su "${row[0]}":`, err.message) }
   }
-
-  console.log('Seed completato.')
+  console.log(`Seed completato: ${counts.create} create, ${counts.update} aggiornate, ${counts.error} errori.`)
   await mongoose.disconnect()
 }
 
-main().catch(err => {
-  console.error(err)
-  process.exit(1)
-})
+main().catch(err => { console.error(err); process.exit(1) })

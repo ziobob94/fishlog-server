@@ -23,6 +23,7 @@ export default async function speciesRoutes(app) {
       $or: [
         { commonNameIt: wordMatch },
         { commonNameEn: wordMatch },
+        { aliasesIt: wordMatch },
         { scientificName: wordMatch }
       ]
     }).limit(10).lean()
@@ -163,7 +164,7 @@ export default async function speciesRoutes(app) {
 
     const exact = new RegExp('^' + escapeRegExp(name) + '$', 'i')
     const sp = await Species.findOne({
-      $or: [{ commonNameIt: exact }, { commonNameEn: exact }, { scientificName: exact }]
+      $or: [{ commonNameIt: exact }, { commonNameEn: exact }, { aliasesIt: exact }, { scientificName: exact }]
     }).lean()
 
     if (!sp) return reply.status(404).send({ error: 'Specie non trovata nel catalogo' })
@@ -171,7 +172,7 @@ export default async function speciesRoutes(app) {
     // Le catture sono testo libero: il match usa tutti i nomi noti della
     // specie (non solo quello passato in query), altrimenti una cattura
     // loggata con "Spigola" non si aggancerebbe a una ricerca per "Branzino".
-    const knownNames = [sp.commonNameIt, sp.commonNameEn, sp.scientificName].filter(Boolean)
+    const knownNames = [sp.commonNameIt, sp.commonNameEn, sp.scientificName, ...(sp.aliasesIt || [])].filter(Boolean)
     const nameMatch = { $in: knownNames.map(n => new RegExp('^' + escapeRegExp(n) + '$', 'i')) }
 
     const { technique, waterType } = req.query
