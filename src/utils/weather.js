@@ -13,6 +13,17 @@ const OM = 'https://api.open-meteo.com/v1/forecast'
 const OM_ARCHIVE = 'https://archive-api.open-meteo.com/v1/archive'
 const OM_MARINE = 'https://marine-api.open-meteo.com/v1/marine'
 
+// ── ICON-2I (modello italiano ad alta risoluzione, via Open-Meteo) ────────────
+// Italia Meteo / ARPAE-SIMC, ~2 km, orario, 3 giorni. Licenza CC BY 4.0: l'attribuzione è obbligatoria (la mostra il client).
+// Va usato solo dentro la sua copertura (Italia e dintorni); oltre 3 giorni o fuori copertura si ripiega sulle fonti esistenti.
+// Si disattiva con ICON2I_ENABLED=0 o con `weather.icon2i: false` in config.
+export const ICON2I_MODEL = 'italia_meteo_arpae_icon_2i'
+export const ICON2I_HOURS = 72
+export const ICON2I_ATTRIBUTION = 'ICON-2I (Italia Meteo, ARPAE-SIMC) via Open-Meteo.com, CC BY 4.0'
+export const icon2iEnabled = () => process.env.ICON2I_ENABLED !== '0' && config.get('weather.icon2i', true) !== false
+// Riquadro approssimato dell'Italia (isole comprese) con un piccolo margine.
+export const inItaly = (lat, lng) => lat >= 35.3 && lat <= 47.3 && lng >= 6.4 && lng <= 18.9
+
 export const googleKey = () => (process.env.GOOGLE_WEATHER_KEY || config.get('google.weatherKey', '') || '').trim()
 
 async function getJson(url) {
@@ -131,6 +142,9 @@ async function omMarineDay(lat, lng, date) {
 async function omMarineNow(lat, lng) {
   return cached(`omn:${ck(lat, lng)}`, 10 * 60e3, () => getJson(`${OM_MARINE}?latitude=${lat}&longitude=${lng}&current=wave_height,wave_period,sea_surface_temperature&timezone=auto`))
 }
+async function omIconNow(lat, lng) {
+  return cached(`omi:${ck(lat, lng)}`, 10 * 60e3, () => getJson(`${OM}?latitude=${lat}&longitude=${lng}&models=${ICON2I_MODEL}&current=temperature_2m,wind_speed_10m,wind_direction_10m,pressure_msl&wind_speed_unit=kmh&timezone=auto`))
+}
 async function omNow(lat, lng) {
   return cached(`omc:${ck(lat, lng)}`, 10 * 60e3, () => getJson(`${OM}?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m,wind_direction_10m,surface_pressure&wind_speed_unit=kmh&timezone=auto`))
 }
@@ -143,7 +157,17 @@ export async function getCurrent(lat, lng) {
   const out = { tempAir: null, windSpeed: null, windDeg: null, pressure: null, waveHeight: null, wavePeriod: null, waterTemp: null }
   const sources = { weather: null, marine: null }
   const useG = !!googleKey()
-  const [g, marine] = await Promise.all([useG ? settle(gCurrent(lat, lng)) : null, settle(omMarineNow(lat, lng))])
+  const useIcon = icon2iEnabled() && inItaly(lat, lng)
+  const [icon, marine] = await Promise.all([useIcon ? settle(omIconNow(lat, lng)) : null, settle(omMarineNow(lat, lng))])
+  if (icon?.current && num(icon.current.temperature_2m) != null) {
+    out.tempAir = num(icon.current.temperature_2m)
+    out.windSpeed = num(icon.current.wind_speed_10m)
+    out.windDeg = num(icon.current.wind_direction_10m)
+    out.pressure = num(icon.current.pressure_msl)
+    sources.weather = 'icon-2i'
+  }
+  // Google solo se ICON-2I non ha dato i campi principali (risparmia la quota).
+  const g = useG && out.tempAir == null ? await settle(gCurrent(lat, lng)) : null
   if (g) {
     out.tempAir = num(g.temperature?.degrees)
     out.windSpeed = kmh(g.wind?.speed)
@@ -158,7 +182,7 @@ export async function getCurrent(lat, lng) {
       out.windSpeed = pick(out.windSpeed, num(om.current.wind_speed_10m))
       out.windDeg = pick(out.windDeg, num(om.current.wind_direction_10m))
       out.pressure = pick(out.pressure, num(om.current.surface_pressure))
-      sources.weather = sources.weather ? 'google+open-meteo' : 'open-meteo'
+      sources.weather = sources.weather ? `${sources.weather}+open-meteo` : 'open-meteo'
     }
   }
   if (marine?.current) {

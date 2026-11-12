@@ -1,9 +1,10 @@
 // Pannello meteo + mare per una posizione qualsiasi (GET /api/weather/overview).
+// In Italia la fonte principale è ICON-2I (via Open-Meteo, CC BY 4.0, ~2 km, 72 ore): poi Google per i giorni 4-10 e Open-Meteo oltre; fuori Italia o se ICON-2I non risponde, resta lo schema sotto.
 // Meteo: Google Weather (attuale, 48 ore, 10 giorni) esteso con Open-Meteo (gratis) fino a 7 giorni di ore e 15 giorni di previsioni;
 // ogni riga porta `source` ('google' | 'open-meteo'). Trend e storico della pressione vengono da Open-Meteo (pressione a livello del mare).
 // Mare: Open-Meteo Marine (gratuito). Fuori dalla copertura marina (lago, entroterra) i campi sono null e `marine.available` è false.
 // Fase lunare, illuminazione e trend pressione sono calcolati/derivati qui, così il client non ha logica.
-import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, googleQuota } from './weather.js'
+import { cached, getJson, num, kmh, ymd, settle, ck, gCondition, omCondition, OM, OM_MARINE, cellOf, gCurrent, gDays, gHours, googleQuota, ICON2I_MODEL, ICON2I_HOURS, ICON2I_ATTRIBUTION, icon2iEnabled, inItaly } from './weather.js'
 import { googleKey } from './weather.js'
 import { attachDailyActivity } from './fishingDay.js'
 
@@ -77,6 +78,14 @@ const omPanel = (lat, lng) => cached(`omp2:${ck(lat, lng)}`, 15 * 60e3, () => ge
   + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max`
   + `&forecast_days=16&past_hours=${PAST_HOURS}&wind_speed_unit=kmh&timezone=auto`))
 
+// Stesse variabili del pannello Open-Meteo ma dal modello italiano; 3 giorni, niente ore passate (le dà la richiesta generica).
+// Le variabili che il modello non ha (es. probabilità di pioggia, UV) arrivano null e si completano dalla richiesta generica.
+const omIcon = (lat, lng) => cached(`omi2:${ck(lat, lng)}`, 15 * 60e3, () => getJson(
+  `${OM}?latitude=${lat}&longitude=${lng}&models=${ICON2I_MODEL}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day`
+  + `&hourly=temperature_2m,precipitation_probability,precipitation,weather_code,wind_speed_10m,wind_gusts_10m,wind_direction_10m,pressure_msl`
+  + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,uv_index_max`
+  + `&forecast_days=3&wind_speed_unit=kmh&timezone=auto`))
+
 const omMarine = (lat, lng) => cached(`omm3:${ck(lat, lng)}`, 30 * 60e3, () => getJson(
   `${OM_MARINE}?latitude=${lat}&longitude=${lng}`
   + `&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height,sea_surface_temperature,sea_level_height_msl,ocean_current_velocity,ocean_current_direction`
@@ -139,13 +148,13 @@ function fromGoogle(c, hours, days) {
   return { cur, hourly, daily, pressure3hAgo: null, pressureHistory: [] }
 }
 
-function fromOpenMeteo(om) {
+function fromOpenMeteo(om, src = 'open-meteo') {
   if (!om?.current) return null
   const c = om.current, h = om.hourly || {}, d = om.daily || {}
   const nowIdx = (h.time || []).findIndex(t => t >= c.time)
   const i0 = nowIdx < 0 ? PAST_HOURS : nowIdx
   const row = (t, j) => ({
-    time: t, date: t.slice(0, 10), hour: Number(t.slice(11, 13)), source: 'open-meteo',
+    time: t, date: t.slice(0, 10), hour: Number(t.slice(11, 13)), source: src,
     condition: omCondition(h.weather_code?.[j], h.wind_speed_10m?.[j]),
     wmo: num(h.weather_code?.[j]),
     temp: num(h.temperature_2m?.[j]),
@@ -161,7 +170,7 @@ function fromOpenMeteo(om) {
   const todayDate = c.time.slice(0, 10)
   const pastToday = (h.time || []).slice(0, i0).map((t, j) => row(t, j)).filter(r => r.date === todayDate)
   const daily = (d.time || []).slice(0, 15).map((date, k) => ({
-    date, source: 'open-meteo',
+    date, source: src,
     condition: omCondition(d.weather_code?.[k], d.wind_speed_10m_max?.[k]),
     wmo: num(d.weather_code?.[k]),
     precipSum: num(d.precipitation_sum?.[k]), windGust: num(d.wind_gusts_10m_max?.[k]),
@@ -183,6 +192,46 @@ function fromOpenMeteo(om) {
   const pressure3hAgo = i0 >= 3 ? num(h.pressure_msl?.[i0 - 3]) : null
   const pressureHistory = (h.pressure_msl || []).slice(Math.max(0, i0 - 5), i0 + 1).filter(v => v != null)
   return { cur, hourly, pastToday, daily, pressure3hAgo, pressureHistory, pressureNow: num(h.pressure_msl?.[i0]), utcOffset: Number(om.utc_offset_seconds) || 0 }
+}
+
+// ICON-2I: stessa forma di Open-Meteo, ma solo le ore con dato (max 72 da adesso) e i giorni con temperatura.
+// Fuori copertura o con risposta vuota restituisce null e il chiamante usa le fonti di sempre.
+export function fromIcon(raw) {
+  const r = fromOpenMeteo(raw, 'icon-2i')
+  if (!r || r.cur.temp == null) return null
+  r.hourly = r.hourly.filter(x => x.temp != null).slice(0, ICON2I_HOURS)
+  r.daily = r.daily.filter(d => d.tempMax != null && d.tempMin != null).slice(0, 3)
+  if (!r.hourly.length || !r.daily.length) return null
+  r.pastToday = []
+  return r
+}
+
+// Estende `w` con i dati di `o` oltre ciò che `w` copre (ore e giorni successivi) e completa i campi mancanti.
+// Restituisce { used, extended }: `used` se `o` ha contribuito in qualche modo, `extended` se ha aggiunto ore o giorni.
+const HOURS_MAX = 168, DAYS_MAX = 15
+function extendWith(w, o, off, fillGaps) {
+  let used = false, extended = false
+  if (!w.cur) { w.cur = o.cur; used = true }
+  else if (fillGaps && o.cur) for (const k of Object.keys(o.cur)) if (w.cur[k] == null && o.cur[k] != null) { w.cur[k] = o.cur[k]; used = true }
+  if (!w.hourly.length) { w.hourly = o.hourly; used = used || o.hourly.length > 0 }
+  else {
+    if (fillGaps) {
+      const byTime = new Map(o.hourly.map(r => [utcMs(r, off), r]))
+      for (const r of w.hourly) if (r.precipProbability == null) { const p = byTime.get(utcMs(r, off))?.precipProbability; if (p != null) { r.precipProbability = p; used = true } }
+    }
+    const last = Math.max(...w.hourly.map(r => utcMs(r, off)).filter(Number.isFinite))
+    const more = o.hourly.filter(r => utcMs(r, off) > last)
+    if (more.length) { w.hourly = [...w.hourly, ...more].slice(0, HOURS_MAX); extended = true }
+  }
+  if (!w.daily.length) { w.daily = o.daily; used = used || o.daily.length > 0 }
+  else {
+    const have = new Set(w.daily.map(d => d.date))
+    const byDate = new Map(o.daily.map(d => [d.date, d]))
+    w.daily = w.daily.map(d => { const x = byDate.get(d.date); return { ...d, sunrise: d.sunrise ?? x?.sunrise ?? null, sunset: d.sunset ?? x?.sunset ?? null, precipSum: d.precipSum ?? x?.precipSum ?? null, windGust: d.windGust ?? x?.windGust ?? null, precipProbability: d.precipProbability ?? x?.precipProbability ?? null, wmo: d.wmo ?? x?.wmo ?? null } })
+    const more = o.daily.filter(d => !have.has(d.date) && d.date > w.daily[w.daily.length - 1].date)
+    if (more.length) { w.daily = [...w.daily, ...more].slice(0, DAYS_MAX); extended = true }
+  }
+  return { used: used || extended, extended }
 }
 
 function buildMarine(m) {
@@ -217,34 +266,27 @@ const utcMs = (row, off) => (row.source === 'google' ? Date.parse(row.time) : Da
 export async function getOverview(reqLat, reqLng) {
   const { lat, lng } = cellOf(reqLat, reqLng) // griglia 0,05°: risposta condivisa tra utenti vicini
   const useG = !!googleKey()
+  // ICON-2I per l'Italia: se risponde copre da solo l'ora corrente e le prime 72 ore, quindi Google «attuale» e «ore» (a quota) non servono.
+  const iconRaw = icon2iEnabled() && inItaly(lat, lng) ? await settle(omIcon(lat, lng)) : null
+  const icon = fromIcon(iconRaw)
   const [gc, gh, gd, marineRaw, omRaw] = await Promise.all([
-    useG ? settle(gCurrent(lat, lng)) : null, useG ? settle(gHours(lat, lng)) : null,
+    useG && !icon ? settle(gCurrent(lat, lng)) : null, useG && !icon ? settle(gHours(lat, lng)) : null,
     useG ? settle(gDays(lat, lng)) : null, settle(omMarine(lat, lng)), settle(omPanel(lat, lng)),
   ])
-  let w = (gc || gh || gd) ? fromGoogle(gc, gh, gd) : null
+  const g = (gc || gh || gd) ? fromGoogle(gc, gh, gd) : null
   const om = fromOpenMeteo(omRaw)
-  let source = w ? 'google' : null
-  let extended = false
-  if (!w && om) { w = om; source = 'open-meteo' }
-  else if (w && om) {
-    // Open-Meteo (gratis) completa ciò che Google non dà: ore oltre le 48 (fino a 168), giorni oltre il decimo (fino a 15), campi mancanti.
-    w.cur = w.cur || om.cur
-    if (!w.hourly.length) w.hourly = om.hourly
-    else {
-      const lastG = Math.max(...w.hourly.map(r => utcMs(r, 0)).filter(Number.isFinite))
-      const more = om.hourly.filter(r => utcMs(r, om.utcOffset) > lastG)
-      if (more.length) { w.hourly = [...w.hourly, ...more].slice(0, 168); extended = true }
-    }
-    if (!w.daily.length) w.daily = om.daily
-    else {
-      const have = new Set(w.daily.map(d => d.date))
-      const byDate = new Map(om.daily.map(d => [d.date, d]))
-      w.daily = w.daily.map(d => { const o = byDate.get(d.date); return { ...d, sunrise: d.sunrise ?? o?.sunrise ?? null, sunset: d.sunset ?? o?.sunset ?? null, precipSum: d.precipSum ?? o?.precipSum ?? null, windGust: d.windGust ?? o?.windGust ?? null, wmo: d.wmo ?? o?.wmo ?? null } })
-      const more = om.daily.filter(d => !have.has(d.date) && d.date > w.daily[w.daily.length - 1].date)
-      if (more.length) { w.daily = [...w.daily, ...more].slice(0, 15); extended = true }
-    }
-    source = extended || !gc ? 'google+open-meteo' : 'google'
+  const off = icon?.utcOffset ?? om?.utcOffset ?? 0
+  // Livelli in ordine di priorità; ognuno completa il precedente oltre ciò che copre.
+  const layers = [['icon-2i', icon], ['google', g], ['open-meteo', om]].filter(l => l[1])
+  let w = null, extended = false
+  const parts = []
+  for (const [name, data] of layers) {
+    if (!w) { w = data; parts.push(name); continue }
+    const r = extendWith(w, data, off, !!icon && name === 'open-meteo')
+    if (r.used) parts.push(name)
+    if (name === 'open-meteo' && r.extended) extended = true
   }
+  const source = parts.length ? parts.join('+') : null
   if (!w) { const e = new Error('Meteo non disponibile'); e.status = 502; throw e }
   // Tendenza e storico della pressione: tutto da Open-Meteo (stessa serie a livello del mare, nessuna richiesta a quota)
   const trendDelta = om?.pressureNow != null && om.pressure3hAgo != null ? om.pressureNow - om.pressure3hAgo : null
@@ -266,7 +308,7 @@ export async function getOverview(reqLat, reqLng) {
       pressure: { value: w.cur?.pressure ?? om?.pressureNow ?? null, history6h: om?.pressureHistory || [], ...(pressureTrend(trendDelta) || { trend: null, delta3h: null }) },
     },
     degraded: useG && googleQuota.isBlocked(), // quota Google al blocco: dati da cache o da ripiego
-    sources: { weather: source, marine: marine.available ? 'open-meteo' : null, extended: extended ? 'open-meteo' : null },
+    sources: { weather: source, marine: marine.available ? 'open-meteo' : null, extended: extended ? 'open-meteo' : null, attribution: parts.includes('icon-2i') ? ICON2I_ATTRIBUTION : null },
   }
   const have = new Set(view.hourly.map(r => `${r.date}T${r.hour}`))
   const past = (om?.pastToday || []).filter(r => !have.has(`${r.date}T${r.hour}`))
