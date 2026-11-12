@@ -315,7 +315,7 @@ export default async function postRoutes(app) {
       .catch(err => app.log.error(err, 'Notifica commento fallita'))
 
     notifyPostAuthor(post.author, req.user.sub, 'emailComments', () =>
-      newCommentEmail(req.user.name, message.trim(), `${CLIENT_URL}/posts/${post._id}`)
+      newCommentEmail(req.user.name, message.trim(), `${CLIENT_URL}/post/${post._id}`)
     ).catch(err => app.log.error(err, 'Invio email nuovo commento fallito'))
 
     return reply.status(201).send(post.comments[post.comments.length - 1])
@@ -370,7 +370,7 @@ export default async function postRoutes(app) {
       notifyPostActivity(post, userId, 'post_like')
         .catch(err => app.log.error(err, 'Notifica mi piace fallita'))
       notifyPostAuthor(post.author, userId, 'emailLikes', () =>
-        newLikeEmail(req.user.name, `${CLIENT_URL}/posts/${post._id}`)
+        newLikeEmail(req.user.name, `${CLIENT_URL}/post/${post._id}`)
       ).catch(err => app.log.error(err, 'Invio email nuovo like fallito'))
     }
 
