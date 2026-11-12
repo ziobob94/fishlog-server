@@ -1,3 +1,11 @@
+# [1.33.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.2...server-v1.33.0) (2026-11-12)
+
+
+### Features
+
+* elenco alfabetico delle specie per la scheda «Tutte» ([f4187fd](https://github.com/ziobob94/fishlog-server/commit/f4187fdc05bb49051d02755bff60842f0fea273a))
+* endpoint «In stagione» per le specie (stagione per mese e zona) ([eb0919c](https://github.com/ziobob94/fishlog-server/commit/eb0919cf08de74b08e2785957787ebd65d84646a))
+
 ## [1.32.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.1...server-v1.32.2) (2026-11-12)
 
 
