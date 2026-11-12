@@ -1,3 +1,11 @@
+## [1.32.2](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.1...server-v1.32.2) (2026-11-12)
+
+
+### Bug Fixes
+
+* conteggi della Classifica (media delle catture, uscite e catture nel podio) ([2634902](https://github.com/ziobob94/fishlog-server/commit/2634902fe7bed8733ab11810ed1499a1369781bf))
+* la Classifica esclude le uscite ancora in corso ([fe1b0ff](https://github.com/ziobob94/fishlog-server/commit/fe1b0ff80a6972114fc8d80668263dd571199473))
+
 ## [1.32.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.32.0...server-v1.32.1) (2026-11-11)
 
 
