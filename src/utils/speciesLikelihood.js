@@ -67,3 +67,32 @@ function reasonOf(p, { season, temp, waterTemp, detailed, own }) {
   const s = bits.join(', ')
   return s.charAt(0).toUpperCase() + s.slice(1) + '.'
 }
+
+// ── «In stagione»: specie più comuni del mese per la zona ───────────────────────────────────────
+// Solo stagione (nessuna temperatura né condizioni del giorno): è l'elenco della schermata Specie.
+// Zona = macro-area dedotta dalla latitudine; senza posizione vale tutta Italia. Oggi la curva è la stessa per tutte
+// le zone (vedi `seasonByZone` in speciesProfiles.json): dato indicativo, da validare.
+export function zoneOf(lat) {
+  if (!isNum(lat)) return 'italia'
+  return lat >= 44 ? 'nord' : lat >= 41.5 ? 'centro' : 'sud'
+}
+
+export function seasonalSpecies({ month, zone = 'italia', userCounts = new Map(), limit, rulesOverride } = {}) {
+  const R = loadRules(rulesOverride).species
+  const items = []
+  for (const p of profilesFile.profiles) {
+    const curve = p.seasonByZone?.[zone] || p.season
+    const score = curve[(month - 1 + 12) % 12]
+    if (score < R.minScore) continue
+    const lv = R.levels.find(l => score <= l.max) || R.levels[R.levels.length - 1]
+    const own = [p.name, ...(p.aliases || [])].reduce((a, n) => a + (userCounts.get(norm(n)) || 0), 0)
+    items.push({
+      name: p.name, scientificName: p.scientificName || null, water: p.water,
+      score, level: lv.key, label: lv.label, dots: lv.dots,
+      season: curve, userCatches: own > 0 ? own : null,
+    })
+  }
+  const rank = i => R.levels.findIndex(l => l.key === i.level)
+  items.sort((a, b) => rank(b) - rank(a) || (b.userCatches || 0) - (a.userCatches || 0) || a.name.localeCompare(b.name, 'it'))
+  return items.slice(0, limit ?? R.maxItems)
+}

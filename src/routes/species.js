@@ -4,6 +4,8 @@ import Session from '../models/Session.js'
 import { searchGbif, fetchGbifDetail } from '../utils/gbif.js'
 import { searchINaturalistFish } from '../utils/inaturalist.js'
 import { escapeRegExp } from '../utils/regex.js'
+import { seasonalSpecies, zoneOf } from '../utils/speciesLikelihood.js'
+import { userSpeciesCounts, rulesOverride } from '../utils/fishingDay.js'
 
 export default async function speciesRoutes(app) {
 
@@ -112,6 +114,37 @@ export default async function speciesRoutes(app) {
     }
 
     return { data }
+  })
+
+  // GET /api/species/all?page=&limit= — catalogo in ordine alfabetico (scheda «Tutte»), solo specie con nome comune italiano
+  app.get('/all', auth, async (req) => {
+    const limit = Math.min(60, Math.max(1, parseInt(req.query.limit, 10) || 30))
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1)
+    const filter = { commonNameIt: { $exists: true, $nin: [null, ''] } }
+    const [data, total] = await Promise.all([
+      Species.find(filter).collation({ locale: 'it', strength: 1 }).sort({ commonNameIt: 1, _id: 1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Species.countDocuments(filter)
+    ])
+    return { data, page, total, hasMore: page * limit < total }
+  })
+
+  // GET /api/species/seasonal?lat=&lng=&month=1-12 — «In stagione»: specie più comuni del mese per la zona
+  // (macro-area dalla latitudine; senza posizione, Italia). Dato indicativo: curve editoriali in
+  // src/data/speciesProfiles.json, non validate con catture reali. Ordine: livello, catture dell'utente, nome.
+  app.get('/seasonal', auth, async (req, reply) => {
+    const month = req.query.month === undefined ? new Date().getMonth() + 1 : Number(req.query.month)
+    if (!Number.isInteger(month) || month < 1 || month > 12) return reply.status(400).send({ error: 'month non valido' })
+    const hasPos = req.query.lat !== undefined && req.query.lng !== undefined
+    const lat = Number(req.query.lat), lng = Number(req.query.lng)
+    if (hasPos && (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) {
+      return reply.status(400).send({ error: 'Coordinate non valide' })
+    }
+    const zone = hasPos ? zoneOf(lat) : 'italia'
+    // Storico dell'utente: nel raggio dal luogo se c'è la posizione, altrimenti ovunque.
+    const userCounts = hasPos
+      ? await userSpeciesCounts(req.user.sub, lat, lng, 50)
+      : await userSpeciesCounts(req.user.sub, 42, 12.5, 1500)
+    return { month, zone, indicative: true, generatedAt: new Date().toISOString(), data: seasonalSpecies({ month, zone, userCounts, rulesOverride: rulesOverride() }) }
   })
 
   // GET /api/species/name/:name?technique=&waterType= — scheda specie

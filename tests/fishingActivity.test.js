@@ -102,3 +102,18 @@ test('oggi a fine giornata: con le ore passate l\'attività c\'è e la temperatu
   assert.ok(a && a.hours.length === 24 && a.partial === false)
   assert.ok(a.factors.waterTemp && a.factors.waterTemp.score === 1)
 })
+
+import { seasonalSpecies, zoneOf } from '../src/utils/speciesLikelihood.js'
+test('«In stagione»: zona, ordine (livello, catture utente, nome) e tetto di 8', () => {
+  assert.equal(zoneOf(null), 'italia'); assert.equal(zoneOf(45.4), 'nord'); assert.equal(zoneOf(43), 'centro'); assert.equal(zoneOf(38), 'sud')
+  const list = seasonalSpecies({ month: 7 })
+  assert.ok(list.length <= 8 && list.length > 0)
+  assert.ok(list.every(i => i.season.length === 12 && i.scientificName))
+  const rank = k => ['meno_probabile', 'possibile', 'probabile', 'molto_probabile'].indexOf(k)
+  for (let i = 1; i < list.length; i++) assert.ok(rank(list[i - 1].level) >= rank(list[i].level))
+  const top = list.filter(i => i.level === list[0].level)
+  const last = top[top.length - 1].name
+  const boosted = seasonalSpecies({ month: 7, userCounts: new Map([[last.toLowerCase(), 5]]) })
+  assert.equal(boosted.find(i => i.level === list[0].level).name, last)
+  assert.equal(boosted.find(i => i.name === last).userCatches, 5)
+})

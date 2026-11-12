@@ -67,3 +67,7 @@ Obiettivo: sapere se gli indici dicono qualcosa di vero **prima** di mostrarli a
 7. **Dopo il lancio.** Salvare (con consenso) livello previsto e cattura reale per ricalibrare ogni trimestre.
 
 Limiti da dichiarare: le catture non registrano le ore senza pesci (si pesca dove e quando si pensa di prendere), quindi la CPUE è distorta; la marea nel Mediterraneo è piccola e il modello è grossolano.
+
+## «In stagione» (`GET /api/species/seasonal`)
+
+Elenco della schermata Specie: le specie più comuni del mese, solo dalla stagione dei profili (`speciesProfiles.json`, campo `season`, 12 valori). Parametri: `month` (1-12, default il mese corrente), `lat`/`lng` opzionali. La zona è una macro-area dalla latitudine (nord ≥ 44°, centro ≥ 41,5°, sud) oppure `italia` senza posizione. Per ora **le curve sono uguali in tutte le zone**: un profilo può avere `seasonByZone: { nord|centro|sud: [12 valori] }` per differenziarle. Sono dati editoriali **indicativi, non validati**; la risposta porta `indicative: true`. Ordine: livello, catture dell'utente (entro 50 km, o ovunque senza posizione), nome; massimo `species.maxItems` (8).
