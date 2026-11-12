@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.35.0...server-v1.36.0) (2026-11-12)
+
+
+### Features
+
+* **posts:** hashtag estratti da titolo e testo, filtro ?tag= e endpoint /posts/tags ([#31](https://github.com/ziobob94/fishlog-server/issues/31)) ([a59e97b](https://github.com/ziobob94/fishlog-server/commit/a59e97b22099cfaad77681a03d2e4f2cbe1b5111))
+
 # [1.35.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.34.0...server-v1.35.0) (2026-11-12)
 
 
