@@ -1,4 +1,5 @@
 import mongoose from 'mongoose'
+import { extractHashtags } from '../utils/hashtags.js'
 
 const ResponseSchema = new mongoose.Schema({
   user:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
@@ -58,6 +59,8 @@ const PostSchema = new mongoose.Schema({
   allowedGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
   title:        { type: String, trim: true },
   body:         { type: String, required: true, trim: true },
+  // Derivato da titolo+testo a ogni salvataggio (vedi pre-validate): non si scrive a mano.
+  hashtags:     { type: [String], default: [] },
   // default: undefined evita che Mongoose crei comunque il subdocumento
   // (con i suoi default interni, es. status:'open') per i post non-evento.
   event:        { type: EventSchema, default: undefined },
@@ -73,5 +76,12 @@ const PostSchema = new mongoose.Schema({
 PostSchema.index({ visibility: 1, createdAt: -1 })
 PostSchema.index({ allowedGroups: 1 })
 PostSchema.index({ author: 1 })
+PostSchema.index({ hashtags: 1, createdAt: -1 })
+
+PostSchema.pre('validate', function () {
+  if (this.isNew || this.isModified('title') || this.isModified('body') || !this.hashtags) {
+    this.hashtags = extractHashtags(this.title, this.body)
+  }
+})
 
 export default mongoose.model('Post', PostSchema)

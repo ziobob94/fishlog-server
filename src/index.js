@@ -38,6 +38,7 @@ import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
 import { backfillDirectConversations } from './migrations/backfillConversationType.js'
 import { backfillMessageReadBy } from './migrations/backfillMessageReadBy.js'
+import { backfillPostHashtags } from './migrations/backfillPostHashtags.js'
 
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -183,6 +184,12 @@ try {
   await backfillMessageReadBy(app.log)
 } catch (err) {
   app.log.error({ err }, 'Backfill readBy messaggi fallito')
+}
+
+try {
+  await backfillPostHashtags(app.log)
+} catch (err) {
+  app.log.error({ err }, 'Backfill hashtag post fallito')
 }
 
 // Configurazioni modificabili da admin (eBay, OAuth, SMTP, feature flag...):
