@@ -26,7 +26,7 @@ export async function searchGbif(q) {
 }
 
 export async function fetchGbifDetail(gbifKey) {
-  const detail = { description: null, imageUrl: null }
+  const detail = { description: null, imageUrl: null, imageCredit: null }
   try {
     const [descRes, mediaRes] = await Promise.all([
       fetch(`https://api.gbif.org/v1/species/${gbifKey}/descriptions`),
@@ -50,7 +50,10 @@ export async function fetchGbifDetail(gbifKey) {
     if (mediaRes.ok) {
       const m = await mediaRes.json()
       const img = m.results?.find(x => x.type === 'StillImage' && x.identifier)
-      if (img) detail.imageUrl = img.identifier
+      if (img) {
+        detail.imageUrl = img.identifier
+        detail.imageCredit = { author: img.creator || img.rightsHolder || undefined, license: img.license || undefined, sourceUrl: img.references || undefined }
+      }
     }
   } catch {
     // GBIF non raggiungibile: si mantiene quanto già in cache
