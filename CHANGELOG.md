@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.36.0...server-v1.37.0) (2026-11-12)
+
+
+### Features
+
+* **species:** catalogo curato di 120 specie con nomi italiani, alias e descrizioni ([#32](https://github.com/ziobob94/fishlog-server/issues/32)) ([c760b38](https://github.com/ziobob94/fishlog-server/commit/c760b3855026c06c9716e43f6482288de2739460))
+
 # [1.36.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.35.0...server-v1.36.0) (2026-11-12)
 
 
