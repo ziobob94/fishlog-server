@@ -9,6 +9,7 @@ import { distanceKm } from '../utils/geo.js'
 import { sendMail, newCommentEmail, newLikeEmail } from '../utils/mailer.js'
 import Friendship from '../models/Friendship.js'
 import AppConfig from '../config.js'
+import { normalizeTag, isValidTag } from '../utils/hashtags.js'
 
 const cfg = new AppConfig()
 const CLIENT_URL = cfg.get('client.url')
@@ -88,12 +89,29 @@ export default async function postRoutes(app) {
     return { ok: true }
   })
 
+  // GET /api/posts/tags — hashtag più usati negli ultimi `days` giorni (default 30)
+  // tra i post visibili a chi chiede. Dichiarata prima di '/:id'.
+  app.get('/tags', auth, async (req) => {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 1), 365)
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50)
+    const filter = await visibilityFilter(req.user)
+    const data = await Post.aggregate([
+      { $match: { ...filter, createdAt: { $gte: new Date(Date.now() - days * 86400e3) } } },
+      { $unwind: '$hashtags' },
+      { $group: { _id: '$hashtags', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: limit },
+      { $project: { _id: 0, tag: '$_id', count: 1 } }
+    ])
+    return { data }
+  })
+
   // GET /api/posts — bacheca generale, filtrabile per tipo/visibilità/data/autore/gruppo
   // e, per gli eventi, per vicinanza geografica (con relativo ordinamento).
-  app.get('/', auth, async (req) => {
+  app.get('/', auth, async (req, reply) => {
     const {
       page = 1, limit = 20, author, group, type, visibility,
-      dateFrom, dateTo, near, radiusKm, sort, scope
+      dateFrom, dateTo, near, radiusKm, sort, scope, tag
     } = req.query
     const filter = await visibilityFilter(req.user)
     const saved = await savedSet(req.user.sub)
@@ -116,6 +134,11 @@ export default async function postRoutes(app) {
       filter.allowedGroups = group
     }
     if (['post', 'event'].includes(type)) filter.type = type
+    if (tag) {
+      const t = normalizeTag(tag)
+      if (!isValidTag(t)) return reply.status(400).send({ error: 'Hashtag non valido' })
+      filter.hashtags = t
+    }
     if (['public', 'group', 'private'].includes(visibility)) filter.visibility = visibility
 
     const dateField = type === 'event' ? 'event.date' : 'createdAt'
