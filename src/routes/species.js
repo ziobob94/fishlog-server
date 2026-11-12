@@ -42,7 +42,7 @@ export default async function speciesRoutes(app) {
           const patch = {}
           if (!existing.commonNameIt && r.commonNameIt) patch.commonNameIt = r.commonNameIt
           if (!existing.commonNameEn && r.commonNameEn) patch.commonNameEn = r.commonNameEn
-          if (!existing.imageUrl && r.imageUrl) patch.imageUrl = r.imageUrl
+          if (!existing.imageUrl && r.imageUrl) { patch.imageUrl = r.imageUrl; if (r.imageCredit) patch.imageCredit = r.imageCredit }
           if (Object.keys(patch).length) {
             await Species.updateOne({ _id: existing._id }, { $set: patch })
             Object.assign(existing, patch)
@@ -235,7 +235,7 @@ export default async function speciesRoutes(app) {
     if (!sp.description || !sp.imageUrl) {
       const detail = await fetchGbifDetail(gbifKey)
       if (detail.description) sp.description = detail.description
-      if (detail.imageUrl) sp.imageUrl = detail.imageUrl
+      if (detail.imageUrl) { sp.imageUrl = detail.imageUrl; if (detail.imageCredit) sp.imageCredit = detail.imageCredit }
       await sp.save()
     }
 

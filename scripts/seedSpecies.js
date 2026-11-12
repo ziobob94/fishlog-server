@@ -37,6 +37,7 @@ async function seedOne([scientificName, commonNameIt, aliasesIt, waterType, popu
         const detail = await fetchGbifDetail(m.gbifKey)
         fields.gbifKey = m.gbifKey
         fields.imageUrl = detail.imageUrl || undefined
+        fields.imageCredit = detail.imageCredit || undefined
         fields.commonNameEn = m.commonNameEn || undefined
         fields.scientificName = m.scientificName
       }

@@ -9,7 +9,8 @@ const SpeciesSchema = new mongoose.Schema({
   aliasesIt:      { type: [String], default: undefined },
   waterType:      { type: String, enum: ['mare', 'dolce', 'misto'] },
   description:    { type: String },
-  imageUrl:       { type: String },
+  imageUrl:       { type: String },   // solo URL esterno: nessuna immagine salvata sul nostro storage
+  imageCredit:    { author: String, license: String, sourceUrl: String },
   source:         { type: String, enum: ['gbif', 'inaturalist', 'manual'], default: 'gbif' },
   // Specie comuni usate come suggerimento di default quando non c'è
   // storico di catture per una zona (es. prima uscita registrata).

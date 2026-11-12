@@ -24,7 +24,8 @@ export async function searchINaturalistFish(q) {
         scientificName: r.name,
         commonNameIt: isActuallyItalian ? r.preferred_common_name : null,
         commonNameEn: r.english_common_name || null,
-        imageUrl: r.default_photo?.medium_url || null
+        imageUrl: r.default_photo?.medium_url || null,
+        imageCredit: r.default_photo ? { author: r.default_photo.attribution || undefined, license: r.default_photo.license_code || undefined } : undefined
       }
     })
 }
