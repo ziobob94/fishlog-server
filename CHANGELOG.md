@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.37.0...server-v1.38.0) (2026-11-13)
+
+
+### Features
+
+* **gare:** formato FIPSAS surf casting, calcolo classifiche, rotte e PDF ([#34](https://github.com/ziobob94/fishlog-server/issues/34)) ([971c6ac](https://github.com/ziobob94/fishlog-server/commit/971c6acb49d35632f4c792f41dd2fb0e5f867196))
+
 # [1.37.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.36.0...server-v1.37.0) (2026-11-12)
 
 
