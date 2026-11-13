@@ -75,6 +75,14 @@ export default async function speciesRoutes(app) {
       results = results.slice(0, 10)
     }
 
+    // Se la ricerca ha agganciato un alias (es. «sparlotto» → Sparaglione) lo segnaliamo,
+    // così il client può mostrare perché quel risultato compare.
+    results = results.map(r => {
+      const names = [r.commonNameIt, r.commonNameEn, r.scientificName].filter(Boolean)
+      if (names.some(n => wordMatch.test(n))) return r
+      const alias = (r.aliasesIt || []).find(a => wordMatch.test(a))
+      return alias ? { ...(r.toObject ? r.toObject() : r), matchedAlias: alias } : r
+    })
     return { data: results }
   })
 
