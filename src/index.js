@@ -33,6 +33,8 @@ import ebayNotificationRoutes from './routes/ebayNotifications.js'
 import regulationRoutes  from './routes/regulations.js'
 import storyRoutes       from './routes/stories.js'
 import weatherRoutes     from './routes/weather.js'
+import fipsasRoutes      from './routes/fipsas.js'
+import fipsasPublicRoutes from './routes/fipsasPublic.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
@@ -150,6 +152,8 @@ await app.register(ebayNotificationRoutes, { prefix: '/api/ebay' })
 await app.register(regulationRoutes, { prefix: '/api/regulations' })
 await app.register(storyRoutes,      { prefix: '/api/stories' })
 await app.register(weatherRoutes, { prefix: '/api/weather' })
+await app.register(fipsasRoutes, { prefix: '/api/fipsas' })
+await app.register(fipsasPublicRoutes, { prefix: '/api/public/fipsas' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
