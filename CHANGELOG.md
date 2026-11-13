@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.38.0...server-v1.39.0) (2026-11-13)
+
+
+### Features
+
+* **species:** /search segnala l'alias trovato (matchedAlias) ([#33](https://github.com/ziobob94/fishlog-server/issues/33)) ([454ed8c](https://github.com/ziobob94/fishlog-server/commit/454ed8c2599058c7f97eee0e8e309d431091509c))
+
 # [1.38.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.37.0...server-v1.38.0) (2026-11-13)
 
 
