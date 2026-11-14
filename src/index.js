@@ -18,6 +18,7 @@ import authorizePlugin from './plugins/authorize.js'
 
 import sessionRoutes from './routes/sessions.js'
 import voiceCatchRoutes from './routes/voiceCatch.js'
+import assistantRoutes from './routes/assistant.js'
 import mediaRoutes   from './routes/media.js'
 import authRoutes    from './routes/auth.js'
 import groupRoutes     from './routes/groups.js'
@@ -140,6 +141,7 @@ app.get('/api/ws', { websocket: true }, (connection, req) => {
 await app.register(authRoutes,    { prefix: '/api/auth' })
 await app.register(sessionRoutes, { prefix: '/api/sessions' })
 await app.register(voiceCatchRoutes, { prefix: '/api/sessions' })
+await app.register(assistantRoutes, { prefix: '/api/assistant' })
 await app.register(mediaRoutes,   { prefix: '/api/media' })
 await app.register(groupRoutes,   { prefix: '/api/groups' })
 await app.register(adminRoutes,   { prefix: '/api/admin' })

@@ -23,11 +23,15 @@ export const ANTHROPIC_DEFAULT_FALLBACK = 'claude-sonnet-5-5'
 const geminiKey = () => env('GEMINI_API_KEY', 'gemini.apiKey')
 const anthropicKey = () => env('ANTHROPIC_API_KEY', 'anthropic.apiKey')
 
+// Messaggio utente: ora locale, stato dell'app (uscita in corso, se noto) e testo dettato.
+const userMessage = (text, ctx) => `Ora locale del pescatore: ${ctx.time || 'non nota'}.\n${ctx.state ? ctx.state + '\n' : ''}Testo dettato: \"\"\"${text}\"\"\"`
+const toolsOf = ctx => ctx.tools || [TOOL]
+
 // ── Gemini (REST generateContent, function calling) ───────────────────────────
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
-const geminiDeclaration = () => {
-  const { additionalProperties, ...schema } = TOOL.input_schema // non supportato dallo schema Gemini
-  return { name: TOOL.name, description: TOOL.description, parameters: schema }
+const geminiDeclaration = (tool) => {
+  const { additionalProperties, ...schema } = tool.input_schema // non supportato dallo schema Gemini
+  return { name: tool.name, description: tool.description, parameters: schema }
 }
 // "retryDelay": "34s" nei dettagli dell'errore, oppure intestazione Retry-After.
 export function parseRetryAfter(body, header) {
@@ -44,9 +48,9 @@ export async function geminiCall(model, text, ctx = {}, { fetchFn = fetch, key =
       headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
       signal: AbortSignal.timeout(20000),
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: `Ora locale del pescatore: ${ctx.time || 'non nota'}.\nTesto dettato: """${text}"""` }] }],
-        tools: [{ functionDeclarations: [geminiDeclaration()] }],
+        systemInstruction: { parts: [{ text: ctx.system || SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: userMessage(text, ctx) }] }],
+        tools: [{ functionDeclarations: toolsOf(ctx).map(geminiDeclaration) }],
         toolConfig: { functionCallingConfig: { mode: 'AUTO' } },
         generationConfig: { maxOutputTokens: 1024 }
       })
@@ -61,11 +65,11 @@ export async function geminiCall(model, text, ctx = {}, { fetchFn = fetch, key =
     if (res.status === 401 || res.status === 403 || /api key/i.test(msg)) throw new VoiceAiError('auth', msg, { status: res.status })
     throw new VoiceAiError('unavailable', msg, { status: res.status })
   }
-  if (body.promptFeedback?.blockReason) return { raw: [], reply: '', refused: true }
+  if (body.promptFeedback?.blockReason) return { calls: [], raw: [], reply: '', refused: true }
   const parts = body.candidates?.[0]?.content?.parts || []
-  const raw = parts.filter(p => p.functionCall?.name === TOOL.name).map(p => p.functionCall.args || {})
+  const calls = parts.filter(p => p.functionCall?.name).map(p => ({ name: p.functionCall.name, args: p.functionCall.args || {} }))
   const reply = parts.filter(p => typeof p.text === 'string' && !p.thought).map(p => p.text).join(' ').trim()
-  return { raw, reply }
+  return { calls, raw: calls.filter(c => c.name === TOOL.name).map(c => c.args), reply }
 }
 
 // ── Anthropic (SDK ufficiale) ─────────────────────────────────────────────────
@@ -78,11 +82,11 @@ export async function anthropicCall(model, text, ctx = {}, { client = anthropicC
     res = await client.messages.create({
       model,
       max_tokens: 1024,
-      system: SYSTEM,
-      tools: [TOOL],
+      system: ctx.system || SYSTEM,
+      tools: toolsOf(ctx).map(t => ({ ...t, strict: true })),
       tool_choice: { type: 'auto' }, // con i modelli 5.x non si può forzare lo strumento: lo guida il prompt
       output_config: { effort: 'low' },
-      messages: [{ role: 'user', content: `Ora locale del pescatore: ${ctx.time || 'non nota'}.\nTesto dettato: """${text}"""` }]
+      messages: [{ role: 'user', content: userMessage(text, ctx) }]
     })
   } catch (e) {
     const st = e?.status
@@ -90,10 +94,10 @@ export async function anthropicCall(model, text, ctx = {}, { client = anthropicC
     if (st === 401 || st === 403) throw new VoiceAiError('auth', e.message, { status: st })
     throw new VoiceAiError('unavailable', e.message, { status: st })
   }
-  if (res.stop_reason === 'refusal') return { raw: [], reply: '', refused: true }
-  const raw = res.content.filter(b => b.type === 'tool_use' && b.name === TOOL.name).map(b => b.input || {})
+  if (res.stop_reason === 'refusal') return { calls: [], raw: [], reply: '', refused: true }
+  const calls = res.content.filter(b => b.type === 'tool_use').map(b => ({ name: b.name, args: b.input || {} }))
   const reply = res.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim()
-  return { raw, reply }
+  return { calls, raw: calls.filter(c => c.name === TOOL.name).map(c => c.args), reply }
 }
 
 // ── Scelta del fornitore attivo ───────────────────────────────────────────────

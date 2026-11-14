@@ -110,6 +110,11 @@ const SessionSchema = new mongoose.Schema({
 
   notes: { type: String },
 
+  // Esca in uso ora (impostata a voce con «cambio esca»): è l'esca predefinita delle catture successive.
+  currentBait: { type: String },
+  // Id della dettatura che ha creato l'uscita: rende idempotente l'invio ripetuto dalla coda offline.
+  voiceId: { type: String },
+
   // Pronto per auth futura
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
 
