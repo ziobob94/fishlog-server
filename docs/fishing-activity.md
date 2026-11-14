@@ -13,7 +13,7 @@
 | Calcolo dell'attività (funzioni pure) | `src/utils/fishingActivity.js` |
 | Calcolo delle specie probabili (funzioni pure) | `src/utils/speciesLikelihood.js` |
 | Collegamento con il pannello meteo e lo storico utente | `src/utils/fishingDay.js` |
-| Endpoint | `GET /api/weather/fishing` e il campo `daily[].activity` di `GET /api/weather` |
+| Endpoint | `GET /api/weather/fishing`, `POST /api/weather/activity` (riassunto «adesso» per la Home e le località) e il campo `daily[].activity` di `GET /api/weather` |
 | Test | `tests/fishingActivity.test.js` (`npm test`) |
 
 ## Configurare le regole
@@ -25,6 +25,17 @@ I default sono in `src/data/fishingRules.json`. Per cambiarli senza toccare il c
 ```
 
 Gli array (come `levels`) si sostituiscono per intero. `version` va incrementata quando si cambiano le regole, perché finisce nella risposta (`rulesVersion`) e serve a confrontare le validazioni.
+
+## Riassunto «adesso» (Home e «Le mie località»)
+
+`POST /api/weather/activity` con `{ places: [{ id, lat, lon }] }` (fino a 10 luoghi) risponde, per luogo, con `{ id, ok, level, factors, nextWindow, updatedAt }`:
+
+- `level` è il livello 1–5 dell'**ora corrente del luogo**, con le stesse regole e soglie del dettaglio giorno; `null` se per quell'ora i fattori sono meno di `minFactors` (il client mostra «Non riesco a stimarla adesso», mai un livello inventato). `ok: false` = luogo non raggiungibile.
+- `factors` sono i fattori più influenti dell'ora (peso × distanza dal neutro), al massimo `home.maxFactors` (3), ognuno con `effect`: `up` | `flat` | `down`.
+- `nextWindow` è la prima finestra favorevole di oggi non ancora finita (`now: true` se è in corso), o `null`.
+- Risposta con `Cache-Control: private, max-age=900`; i dati arrivano da `getOverview` (cache 15 min). Le uscite dell'utente **non** entrano nel calcolo.
+
+Pesi, soglie dei livelli e `home.{maxFactors,neutral}` stanno in `fishingRules.json` (override con `fishing.rules`). La luna pesa solo come bonus notturno dentro il fattore luce.
 
 ## Come si calcola l'attività
 

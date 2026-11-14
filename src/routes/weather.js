@@ -1,6 +1,6 @@
 import { getCurrent, getDay, googleKey } from '../utils/weather.js'
 import { getOverview } from '../utils/weatherPanel.js'
-import { fishingForDay, userSpeciesCounts, rulesOverride } from '../utils/fishingDay.js'
+import { fishingForDay, fishingNow, userSpeciesCounts, rulesOverride } from '../utils/fishingDay.js'
 import { summarizeForCard, MAX_FAVORITE_PLACES } from '../utils/favoritePlaces.js'
 import { loadRules } from '../utils/fishingActivity.js'
 
@@ -70,6 +70,23 @@ export default async function weatherRoutes(app) {
     }))
     reply.header('Cache-Control', 'private, max-age=900')
     return { results, ttlSeconds: 900 }
+  })
+
+  // POST /api/weather/activity { places: [{ id, lat, lon }] } — attività dei pesci «adesso» per più luoghi (Home e schede «Le mie località»).
+  // Per luogo: { id, ok, level 1-5 | null, factors: [{ key, effect: 'up'|'flat'|'down' }], nextWindow }. level null = dati insufficienti, ok false = luogo non raggiungibile.
+  // Stessa logica del dettaglio giorno del Meteo, sullo stesso getOverview (cache 15 min). Stima indicativa: le uscite dell'utente non entrano nel calcolo.
+  app.post('/activity', auth, async (req, reply) => {
+    const list = req.body?.places
+    if (!Array.isArray(list) || !list.length || list.length > MAX_FAVORITE_PLACES + 2) return reply.status(400).send({ error: 'Parametri non validi' })
+    const items = list.map(p => ({ id: String(p?.id ?? ''), c: coords({ lat: p?.lat, lng: p?.lng ?? p?.lon }) }))
+    if (items.some(i => !i.id || !i.c)) return reply.status(400).send({ error: 'Coordinate non valide' })
+    const rules = loadRules(rulesOverride())
+    const results = await Promise.all(items.map(async ({ id, c }) => {
+      try { const view = await getOverview(c.lat, c.lng); return { id, ok: true, ...fishingNow(view, rules), updatedAt: view.updatedAt } }
+      catch { return { id, ok: false } }
+    }))
+    reply.header('Cache-Control', 'private, max-age=900')
+    return { results, ttlSeconds: 900, indicative: true }
   })
 
   app.get('/overview', auth, overview)

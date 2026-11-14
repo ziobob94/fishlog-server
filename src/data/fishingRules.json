@@ -33,6 +33,7 @@
   },
   "wind": { "idealMaxKmh": 15, "badKmh": 35, "floor": 0.1 },
   "waterTemp": { "min": 6, "optimalMin": 14, "optimalMax": 22, "max": 30, "floor": 0.1 },
+  "home": { "maxFactors": 3, "neutral": 0.5, "_nota": "Riassunto «adesso» della Home: quanti fattori mostrare (i più influenti, peso × distanza dal neutro) e il valore neutro." },
   "species": {
     "weights": { "season": 0.5, "waterTemp": 0.3, "conditions": 0.2 },
     "userHistory": { "radiusKm": 15, "bonusPerCatch": 0.04, "maxBonus": 0.2 },

@@ -93,9 +93,10 @@ export function combine(factors, rules = defaultRules) {
  *  - marineHours: [{time, seaTemp}] (ora locale 'YYYY-MM-DDTHH:00') — opzionale
  *  - tideSeries: [{time, height}] — opzionale
  *  - sunrise, sunset: ISO locali; moonIllumination: 0..1
+ *  - withHourFactors: true → ogni ora porta anche `f` (i punteggi dei fattori di quell'ora), usato dal riassunto «adesso»
  * @returns null se non ci sono abbastanza dati, altrimenti { score, level, label, hours, windows, factors }
  */
-export function activityForDay({ date, hourly = [], marineHours = [], tideSeries = [], sunrise, sunset, moonIllumination = null }, rules = defaultRules) {
+export function activityForDay({ date, hourly = [], marineHours = [], tideSeries = [], sunrise, sunset, moonIllumination = null, withHourFactors = false }, rules = defaultRules) {
   const idx = hourly.map((h, i) => (h.date === date ? i : -1)).filter(i => i >= 0)
   if (idx.length < 6) return null
   const key = h => `${date}T${String(h).padStart(2, '0')}:00`
@@ -118,7 +119,7 @@ export function activityForDay({ date, hourly = [], marineHours = [], tideSeries
     }
     for (const k of Object.keys(sums)) if (isNum(f[k])) sums[k].push(f[k])
     const score = combine(f, rules)
-    hours.push({ hour: hr, score: score == null ? null : Number(score.toFixed(2)), level: levelOf(score, rules)?.level ?? null })
+    hours.push({ hour: hr, score: score == null ? null : Number(score.toFixed(2)), level: levelOf(score, rules)?.level ?? null, ...(withHourFactors ? { f } : {}) })
   }
   const scored = hours.filter(h => h.score != null)
   if (scored.length < 6) return null
