@@ -39,10 +39,15 @@ export const CONFIG_MANIFEST = [
   { key: 'google.weatherAlertEmail', group: 'Google Weather', label: 'Email per gli avvisi di quota (vuoto = tutti gli admin)', type: 'string', secret: false },
   { key: 'google.weatherStopPct',      group: 'Google Weather', label: 'Blocco automatico al % della quota', type: 'number', secret: false },
 
-  // Catture a voce: interpretazione del testo con Claude. La chiave resta SOLO sul server (in alternativa env ANTHROPIC_API_KEY).
-  { key: 'anthropic.apiKey',      group: 'Catture a voce (AI)', label: 'Chiave API Anthropic', type: 'string', secret: true },
-  { key: 'anthropic.voiceModel',  group: 'Catture a voce (AI)', label: 'Modello principale (default claude-haiku-5-5)', type: 'string', secret: false },
-  { key: 'anthropic.voiceFallbackModel', group: 'Catture a voce (AI)', label: 'Modello di ripiego per casi ambigui (default claude-sonnet-5-5)', type: 'string', secret: false },
+  // Catture a voce: interpretazione del testo con un modello AI. Le chiavi restano SOLO sul server (o in env).
+  // Predefinito Gemini (piano gratuito di Google AI Studio, https://aistudio.google.com/apikey); alternativa Anthropic.
+  { key: 'voice.provider',        group: 'Catture a voce (AI)', label: 'Fornitore: gemini o anthropic (vuoto = Gemini se c\'è la chiave, altrimenti Anthropic)', type: 'string', secret: false },
+  { key: 'gemini.apiKey',         group: 'Catture a voce (AI)', label: 'Chiave API Gemini (Google AI Studio)', type: 'string', secret: true },
+  { key: 'gemini.voiceModel',     group: 'Catture a voce (AI)', label: 'Gemini: modello principale (default gemini-3.1-flash-lite)', type: 'string', secret: false },
+  { key: 'gemini.voiceFallbackModel', group: 'Catture a voce (AI)', label: 'Gemini: modello per i casi ambigui (default gemini-3.5-flash)', type: 'string', secret: false },
+  { key: 'anthropic.apiKey',      group: 'Catture a voce (AI)', label: 'Chiave API Anthropic (alternativa)', type: 'string', secret: true },
+  { key: 'anthropic.voiceModel',  group: 'Catture a voce (AI)', label: 'Anthropic: modello principale (default claude-haiku-5-5)', type: 'string', secret: false },
+  { key: 'anthropic.voiceFallbackModel', group: 'Catture a voce (AI)', label: 'Anthropic: modello per i casi ambigui (default claude-sonnet-5-5)', type: 'string', secret: false },
 
   { key: 'features.passwordAuth', group: 'Feature flags', label: 'Login con email e password abilitato', type: 'boolean', secret: false },
 

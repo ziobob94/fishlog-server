@@ -3,7 +3,9 @@
 //  DELETE /api/sessions/:id/catches/:catchId       annulla (usato dal pulsante "Annulla")
 import Session from '../models/Session.js'
 import { canEdit } from '../utils/sessionAccess.js'
-import { getClient, interpretWithFallback, resolveSpecies, normalizeCatch, MAX_TEXT, MAX_CATCHES } from '../utils/voiceCatch.js'
+import { interpretWithFallback, resolveSpecies, normalizeCatch, MAX_TEXT, MAX_CATCHES } from '../utils/voiceCatch.js'
+import { activeProvider, VoiceAiError, inCooldown, cooldownLeft, startCooldown } from '../utils/voiceProviders.js'
+import { parseWithRules } from '../utils/voiceRules.js'
 
 export default async function voiceCatchRoutes(app) {
   const auth = { preHandler: [app.authenticate] }
@@ -26,15 +28,40 @@ export default async function voiceCatchRoutes(app) {
       if (done.length) return { results: done.map(c => ({ status: 'saved', catch: c })), duplicate: true }
     }
 
-    const client = getClient()
-    if (!client) return reply.status(503).send({ error: 'Catture a voce non disponibili: chiave AI non configurata' })
-
+    // Fornitore AI (Gemini gratuito di default). Se è al limite (429), non raggiungibile o non configurato si ripiega
+    // sul parser a regole (una cattura semplice per frase); se nemmeno quello capisce, errore con `code` e
+    // `retryAfter`: il client mette la frase in coda e riprova.
+    const provider = activeProvider()
     let out
-    try {
-      out = await interpretWithFallback(client, text, { time })
-    } catch (err) {
-      req.log.error({ err: err?.message, status: err?.status }, 'voice-catch: errore AI')
-      return reply.status(502).send({ error: 'Servizio di interpretazione non raggiungibile, riprova' })
+    let degraded = null
+    let retryAfter
+    if (!provider) degraded = 'no_provider'
+    else if (inCooldown()) { degraded = 'rate_limit'; retryAfter = cooldownLeft() }
+    else {
+      try {
+        out = await interpretWithFallback(provider, text, { time })
+      } catch (err) {
+        const code = err instanceof VoiceAiError ? err.code : 'unavailable'
+        req.log.warn({ provider: provider.name, code, status: err?.status, err: err?.message }, 'voice-catch: errore AI')
+        degraded = code
+        if (code === 'rate_limit') { startCooldown(err.retryAfter); retryAfter = err.retryAfter || cooldownLeft() }
+      }
+    }
+    if (degraded) {
+      out = await parseWithRules(text)
+      if (!out.raw.length) {
+        const msg = {
+          rate_limit: `Il servizio AI ha raggiunto il limite di richieste${retryAfter ? `: riprova tra circa ${retryAfter} s` : ''}.`,
+          auth: 'La chiave del servizio AI non è valida: avvisa l\'amministratore.',
+          no_provider: 'Le catture a voce non sono configurate: manca la chiave del servizio AI.',
+          unavailable: 'Il servizio AI non è raggiungibile al momento, riprova.',
+          bad_response: 'Il servizio AI ha dato una risposta non valida, riprova.'
+        }[degraded] || 'Servizio AI non disponibile.'
+        const status = degraded === 'rate_limit' ? 429 : 503
+        const code = degraded === 'rate_limit' ? 'ai_rate_limit' : degraded === 'unavailable' ? 'ai_unavailable' : 'ai_not_configured'
+        if (retryAfter) reply.header('retry-after', String(retryAfter))
+        return reply.status(status).send({ error: msg, code, ...(retryAfter ? { retryAfter } : {}) })
+      }
     }
     if (!out.raw.length) {
       return { results: [{ status: 'needs_info', reason: 'not_understood', question: out.reply || 'Non ho capito quale pesce hai preso. Puoi ripetere?' }], model: out.model }
@@ -69,7 +96,7 @@ export default async function voiceCatchRoutes(app) {
         results[idx] = { status: 'saved', catch: session.catches[before + k], ...t.extra }
       })
     }
-    return { results, model: out.model, escalated: !!out.escalated }
+    return { results, model: out.model, provider: provider?.name || null, escalated: !!out.escalated, ...(degraded ? { degraded } : {}) }
   })
 
   app.delete('/:id/catches/:catchId', auth, async (req, reply) => {
