@@ -57,6 +57,12 @@ const UserSchema = new mongoose.Schema({
   // a proposito dei suoi annunci pubblici (visibilità «tutti»).
   marketMessagesFromStrangers: { type: Boolean, default: true },
 
+  // Località preferite della Home («Le mie località»): lista intera e ordinata, massimo MAX_FAVORITE_PLACES.
+  favoritePlaces: {
+    type: [{ _id: false, id: String, name: String, lat: Number, lon: Number, order: Number }],
+    default: [],
+  },
+
   // Preferenze email: ogni chiave è un tipo di notifica indipendente,
   // così si possono aggiungere nuovi tipi senza toccare quelli esistenti.
   notificationPreferences: {

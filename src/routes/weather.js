@@ -1,6 +1,7 @@
 import { getCurrent, getDay, googleKey } from '../utils/weather.js'
 import { getOverview } from '../utils/weatherPanel.js'
 import { fishingForDay, userSpeciesCounts, rulesOverride } from '../utils/fishingDay.js'
+import { summarizeForCard, MAX_FAVORITE_PLACES } from '../utils/favoritePlaces.js'
 import { loadRules } from '../utils/fishingActivity.js'
 
 // Meteo lato server: la chiave Google Weather non esce mai dal server.
@@ -53,6 +54,22 @@ export default async function weatherRoutes(app) {
       if (!out) return reply.status(404).send({ error: 'Giorno fuori dalla previsione' })
       return out
     } catch (e) { return reply.status(e.status === 502 ? 502 : 500).send({ error: 'Meteo non disponibile, riprova tra poco' }) }
+  })
+
+  // POST /api/weather/batch { places: [{ id, lat, lon }] } — meteo e mare compatti di più luoghi in una chiamata (schede «Le mie località»).
+  // Ogni luogo passa da getOverview (griglia 0,05° con cache 15 min), quindi luoghi vicini o richieste ripetute non costano chiamate.
+  // Un luogo che fallisce non blocca gli altri: { id, ok: false }.
+  app.post('/batch', auth, async (req, reply) => {
+    const list = req.body?.places
+    if (!Array.isArray(list) || !list.length || list.length > MAX_FAVORITE_PLACES + 1) return reply.status(400).send({ error: 'Parametri non validi' })
+    const items = list.map(p => ({ id: String(p?.id ?? ''), c: coords({ lat: p?.lat, lng: p?.lng ?? p?.lon }) }))
+    if (items.some(i => !i.id || !i.c)) return reply.status(400).send({ error: 'Coordinate non valide' })
+    const results = await Promise.all(items.map(async ({ id, c }) => {
+      try { return { id, ok: true, ...summarizeForCard(await getOverview(c.lat, c.lng)) } }
+      catch { return { id, ok: false } }
+    }))
+    reply.header('Cache-Control', 'private, max-age=900')
+    return { results, ttlSeconds: 900 }
   })
 
   app.get('/overview', auth, overview)
