@@ -65,6 +65,19 @@ const BAIT_RES = [
   /\bcambio\s+(?:l')?esca\b[^.;]*?(?:\bcon\b|\bin\b|:|,)\s*(?:l'|il |lo |la |un |una |dei |del |dello )?([a-zàèéìòù0-9' ]{3,30}?)(?=\s*(?:,|\.|;|$|\be\b))/
 ]
 
+const FASCIA_RE = /\b(?:di|del|della|nel)\s+(mattina|mattino|pomeriggio|sera|notte)\b/
+const fasciaOf = t => { const f = (t.match(FASCIA_RE) || [])[1]; return f === 'mattino' ? 'mattina' : f }
+const TIME = '(?:alle|all\'|verso le|intorno alle|per le)\\s*(\\d{1,2})(?:\\s*(?:[:.h]|e)\\s*(\\d{2}))?'
+const START_TIME_RE = new RegExp(`\\b(?:iniziat[ao]|cominciat[ao]|partit[oa]|iniziato|inizio|parto|partito)\\b[^.;]*?${TIME}`)
+const START_TIME_RE2 = new RegExp(`\\bora di (?:inizio|partenza)\\b[^.;]*?${TIME}`)
+const END_TIME_RE = new RegExp(`\\b(?:finit[ao]|chius[ao]|terminat[ao]|concluso|conclusa)\\b[^.;]*?${TIME}`)
+const PLACE_UPD_RES = [
+  /\b(?:uscita|pescata|posto|luogo|spot)\s+(?:è|e'|era|sta|si trova)\s+(?:a|ad|in|al|alla|allo|presso|sul|sulla)\s+([^,.;]+?)(?=\s*(?:,|\.|;|$))/,
+  /\b(?:cambia|cambio|correggi|modifica|sposta)\s+(?:il\s+)?(?:luogo|posto|spot)\s+(?:in|con|a)\s+([^,.;]+?)(?=\s*(?:,|\.|;|$))/,
+  /\bsono\s+(?:a|ad|in|al|alla|allo|presso|sul|sulla)\s+([^,.;]+?)(?=\s*(?:,|\.|;|$))/
+]
+const clean = s => s.replace(/\s+m'$/, '').trim() // «m'» finale: rumore tipico del riconoscimento vocale
+
 // Riconosce i comandi dell'assistente con regole semplici. Restituisce { calls, reply, viaRules, model } con lo
 // stesso formato delle chiamate agli strumenti del modello. `calls` vuoto = non ho capito.
 export async function parseAssistantWithRules(text, opts) {
@@ -85,10 +98,29 @@ export async function parseAssistantWithRules(text, opts) {
   for (const re of BAIT_RES) {
     if ((m = t.match(re))) { calls.push({ name: 'cambia_esca', args: { esca: m[1].trim() } }); t = t.replace(m[0], ' '); break }
   }
-  const wantsEnd = END_RE.test(t)
+  // Correzioni dell'uscita in corso (v. modifica_uscita): luogo e orari.
+  const upd = {}
+  for (const re of PLACE_UPD_RES) {
+    if (!calls.length && (m = t.match(re))) { const luogo = clean(m[1]); if (luogo) upd.luogo = cap(luogo); t = t.replace(m[0], ' '); break }
+  }
+  const startClause = t.match(START_TIME_RE) || t.match(START_TIME_RE2)
+  if (!calls.some(c => c.name === 'inizia_uscita') && startClause) {
+    upd.ora_inizio = `${startClause[1]}:${startClause[2] || '00'}`
+    const f = fasciaOf(startClause[0]) || fasciaOf(t); if (f) upd.fascia_inizio = f
+    t = t.replace(startClause[0], ' ')
+  }
+  const endClause = t.match(END_TIME_RE)
+  const endArgs = {}
+  if (endClause) {
+    endArgs.ora_fine = `${endClause[1]}:${endClause[2] || '00'}`
+    const f = fasciaOf(endClause[0]); if (f) endArgs.fascia_fine = f
+    t = t.replace(endClause[0], ' ')
+  }
+  if (Object.keys(upd).length) calls.push({ name: 'modifica_uscita', args: upd })
+  const wantsEnd = END_RE.test(t) || !!endClause
   if (wantsEnd) t = t.replace(END_RE, ' ')
   const hit = await parseWithRules(t, opts)
   for (const raw of hit.raw) calls.push({ name: 'registra_cattura', args: raw })
-  if (wantsEnd) calls.push({ name: 'fine_uscita', args: {} })
+  if (wantsEnd) calls.push({ name: 'fine_uscita', args: endArgs })
   return { calls, raw: calls.filter(c => c.name === 'registra_cattura').map(c => c.args), reply: '', viaRules: true, model: 'regole' }
 }

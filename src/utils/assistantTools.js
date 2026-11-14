@@ -43,7 +43,28 @@ export const TOOL_END = {
   }
 }
 
-export const ASSISTANT_TOOLS = [TOOL_START, CATCH_TOOL, TOOL_BAIT, TOOL_END]
+const FASCIA = { type: 'string', enum: ['mattina', 'pomeriggio', 'sera', 'notte'], description: 'Solo se detta ("di mattina", "del pomeriggio", "di sera", "di notte"). Altrimenti ometti.' }
+export const TOOL_UPDATE = {
+  name: 'modifica_uscita',
+  description: 'Corregge i dati dell\'uscita GIÀ in corso: luogo, ora di inizio, ora di fine, tecnica, tipo di acqua. Usalo per frasi come "l\'uscita è a Tirrenia", "l\'ho iniziata alle 4:30", "no, è al bagno Cisa". Non per iniziare una nuova uscita.',
+  strict: true,
+  input_schema: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      luogo: { type: 'string', description: 'Nuovo luogo, solo se detto.' },
+      ora_inizio: { type: 'string', description: 'Ora di inizio ESATTAMENTE come detta, "H:MM" (es. "4:30", "16:30", "5"). NON convertirla in 24 h: ci pensa il sistema.' },
+      fascia_inizio: FASCIA,
+      ora_fine: { type: 'string', description: 'Ora di fine come detta, "H:MM". NON convertirla in 24 h.' },
+      fascia_fine: FASCIA,
+      tecnica: { type: 'string', enum: ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro'], description: 'Solo se detta.' },
+      acqua: { type: 'string', enum: ['mare', 'fiume', 'lago', 'altro'], description: 'Solo se detta.' }
+    },
+    required: []
+  }
+}
+
+export const ASSISTANT_TOOLS = [TOOL_START, CATCH_TOOL, TOOL_BAIT, TOOL_END, TOOL_UPDATE]
 
 export const ASSISTANT_SYSTEM = `Sei Fishy, l'assistente vocale di Fishlog, un diario di pesca. Il pescatore ti parla in italiano; il testo arriva da un riconoscimento vocale e può contenere errori di trascrizione.
 Traduci ciò che dice in chiamate agli strumenti, nell'ordine in cui le dice (anche più di una per frase):
@@ -51,7 +72,11 @@ Traduci ciò che dice in chiamate agli strumenti, nell'ordine in cui le dice (an
 - registra_cattura: ogni pesce preso (una chiamata per pesce).
 - cambia_esca: cambia l'esca in uso.
 - fine_uscita: ha finito l'uscita.
+- modifica_uscita: corregge luogo, ora di inizio/fine, tecnica o acqua dell'uscita già in corso.
 Regole:
+- Non dire MAI di aver fatto, salvato, corretto o cambiato qualcosa: lo fa il sistema chiamando gli strumenti. Se non chiami uno strumento, non hai fatto nulla e non devi affermare il contrario; se non puoi o non hai capito, dillo in modo semplice e chiedi cosa intende.
+- Gli orari passali come detti («alle 4:30» → ora_inizio "4:30"), con la fascia solo se detta. Non scegliere tu tra mattina e pomeriggio.
+- Se c'è un'uscita in corso e il pescatore dice dove si trova o a che ora è iniziata/finita, è una correzione: usa modifica_uscita (non inizia_uscita).
 - Non inventare dati: ometti i campi non detti. Converti le unità (grammi in kg, "mezzo chilo" = 0.5, metri in cm).
 - "Rilasciato", "ributtato" = rilasciato true; "tenuto", "in frigo" = false.
 - Lo stato dell'app ti dice se c'è già un'uscita in corso: non chiamare inizia_uscita se c'è già, e non registrare catture "inventando" un'uscita (se manca, il sistema ne avvia una).
