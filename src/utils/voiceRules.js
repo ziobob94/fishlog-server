@@ -31,7 +31,7 @@ export function extractFields(text) {
 
 // Prima sequenza di 1-3 parole (non vuote né numeri/unità) che il catalogo riconosce come specie.
 export async function findSpecies(text, opts) {
-  const words = String(text || '').toLowerCase().replace(/[.,;:!?()"«»]/g, ' ').split(/\s+/).filter(Boolean)
+  const words = String(text || '').toLowerCase().replace(/[.,;:!?()"«»'’]/g, ' ').split(/\s+/).filter(Boolean)
   let queries = 0
   for (let i = 0; i < words.length && queries < 10; i++) {
     for (const len of [3, 2, 1]) {
@@ -50,4 +50,45 @@ export async function parseWithRules(text, opts) {
   const sp = await findSpecies(text, opts)
   if (!sp) return { raw: [], reply: '', viaRules: true }
   return { raw: [{ specie: sp.specie, ...extractFields(text), confidenza: 'bassa' }], reply: '', viaRules: true, model: 'regole' }
+}
+
+// ── Comandi dell'assistente (inizia uscita, cambia esca, fine uscita) ─────────
+const cap = s => s.replace(/\b\p{L}/gu, c => c.toUpperCase())
+const PLACE = '(?:a|ad|in|al|alla|allo|presso|sul|sulla|da)\\s+([^,.;]+?)(?=\\s*(?:,|\\.|;|$|\\bcon\\b|\\bcanna\\b|\\bsurfcasting\\b|\\bfeeder\\b|\\bspinning\\b|\\bbolentino\\b))'
+const START_RES = [
+  new RegExp(`\\b(?:inizio|inizia|iniziamo|comincio|comincia|parto|apro|avvio)\\b[^.,;]*?\\b(?:uscita|pescata|sessione)\\b(?:\\s+(?:di pesca|a pesca|di (?:surfcasting|feeder|spinning|bolentino|mosca)))?\\s*${PLACE}`),
+  new RegExp(`\\bvado a pescare\\s+${PLACE}`)
+]
+const END_RE = /\b(?:finisco|finito|chiudo|termino|concludo)\b[^.,;]*\b(?:uscita|pescata|sessione)\b|\bfine (?:uscita|pescata)\b|\bho finito\b/
+const BAIT_RES = [
+  /\b(?:ora|adesso|da ora) uso\s+(?:l'|il |lo |la |un |una |dei |del )?([a-zàèéìòù0-9' ]{3,30}?)(?=\s*(?:,|\.|;|$|\be\b))/,
+  /\bcambio\s+(?:l')?esca\b[^.;]*?(?:\bcon\b|\bin\b|:|,)\s*(?:l'|il |lo |la |un |una |dei |del |dello )?([a-zàèéìòù0-9' ]{3,30}?)(?=\s*(?:,|\.|;|$|\be\b))/
+]
+
+// Riconosce i comandi dell'assistente con regole semplici. Restituisce { calls, reply, viaRules, model } con lo
+// stesso formato delle chiamate agli strumenti del modello. `calls` vuoto = non ho capito.
+export async function parseAssistantWithRules(text, opts) {
+  let t = ` ${String(text || '').toLowerCase().replace(/\s+/g, ' ')} `
+  const calls = []
+  let m
+  for (const re of START_RES) {
+    if ((m = t.match(re))) {
+      const args = { luogo: cap(m[1].trim()) }
+      const tech = t.match(/\b(surfcasting|feeder|spinning|bolentino|mosca)\b/)
+      if (tech) args.tecnica = tech[1]
+      else if (/\bcanna da fondo\b/.test(t)) { args.tecnica = 'altro'; args.note = 'canna da fondo' }
+      calls.push({ name: 'inizia_uscita', args })
+      t = t.replace(m[0], ' ')
+      break
+    }
+  }
+  for (const re of BAIT_RES) {
+    if ((m = t.match(re))) { calls.push({ name: 'cambia_esca', args: { esca: m[1].trim() } }); t = t.replace(m[0], ' '); break }
+  }
+  const wantsEnd = END_RE.test(t)
+  if (wantsEnd) t = t.replace(END_RE, ' ')
+  const hit = await parseWithRules(t, opts)
+  for (const raw of hit.raw) calls.push({ name: 'registra_cattura', args: raw })
+  if (wantsEnd) calls.push({ name: 'fine_uscita', args: {} })
+  return { calls, raw: calls.filter(c => c.name === 'registra_cattura').map(c => c.args), reply: '', viaRules: true, model: 'regole' }
 }

@@ -44,11 +44,12 @@ export async function interpretWithFallback(provider, text, ctx = {}) {
   const { primary, fallback } = provider.models
   let out = await provider.call(primary, text, ctx)
   out.model = primary
-  const doubtful = !out.raw.length || out.raw.some(c => c.confidenza === 'bassa')
+  const calls = out.calls || out.raw.map(args => ({ name: TOOL.name, args }))
+  const doubtful = !calls.length || calls.some(c => c.args?.confidenza === 'bassa')
   if (doubtful && fallback && fallback !== primary && !out.refused) {
     try {
       const second = await provider.call(fallback, text, ctx)
-      if (second.raw.length) out = { ...second, model: fallback, escalated: true }
+      if ((second.calls || second.raw).length) out = { ...second, model: fallback, escalated: true }
     } catch { /* si tiene il risultato del primo modello */ }
   }
   return out
