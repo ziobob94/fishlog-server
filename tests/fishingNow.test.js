@@ -39,10 +39,10 @@ test('il peso decide a parità di influenza e maxFactors è in config', () => {
   assert.deepEqual(f.map(x => x.key), ['light'])
 })
 test('dati mancanti: nessun livello inventato', () => {
-  const none = { level: null, factors: [], nextWindow: null }
   // meno di 6 ore nel giorno
   const few = view(6); few.activityHours = hourly().slice(0, 3); few.hourly = few.activityHours
-  assert.deepEqual({ ...fishingNow(few, rules), rulesVersion: undefined }, { ...none, rulesVersion: undefined })
+  const r = fishingNow(few, rules)
+  assert.deepEqual([r.level, r.factors, r.nextWindow], [null, [], null])
   // senza alba/tramonto né marea e senza pressione: un solo fattore (vento) → nessuna stima
   const thin = view(6, { daily: [{ date: DATE }] }); thin.activityHours = hourly({ pressure: null }); thin.hourly = thin.activityHours.slice(6)
   assert.equal(fishingNow(thin, rules).level, null)
@@ -60,5 +60,5 @@ test('prossima finestra: in corso, successiva o nessuna', () => {
 })
 test('l\'output non contiene le uscite dell\'utente né promesse', () => {
   const r = fishingNow(view(6), rules)
-  assert.deepEqual(Object.keys(r).sort(), ['factors', 'level', 'nextWindow', 'rulesVersion'])
+  assert.deepEqual(Object.keys(r).sort(), ['date', 'factors', 'hour', 'level', 'nextWindow', 'rulesVersion'])
 })

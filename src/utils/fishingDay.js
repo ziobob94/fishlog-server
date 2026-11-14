@@ -90,16 +90,16 @@ export function nextWindow(windows, hour) {
   return null
 }
 
-// Riassunto «adesso» per la Home e le schede delle località: { level 1-5, factors, nextWindow }.
+// Riassunto «adesso» per la Home e le schede delle località: { level 1-5, factors, nextWindow, date, hour } (data e ora locali del luogo).
 // Senza dati sufficienti (meno di 2 fattori nell'ora) il livello è null: il client non inventa nulla. Lo storico delle uscite dell'utente non entra nel calcolo.
 export function fishingNow(view, rules = loadRules(rulesOverride())) {
   const cur = view?.hourly?.[0]
   const i = cur ? view.daily.findIndex(d => d.date === cur.date) : -1
-  const none = { level: null, factors: [], nextWindow: null, rulesVersion: rules.version }
+  const none = { level: null, factors: [], nextWindow: null, date: cur?.date ?? null, hour: cur?.hour ?? null, rulesVersion: rules.version }
   if (i < 0) return none
   let a = null
   try { a = activityForDay({ ...inputsFor(view, i), withHourFactors: true }, rules) } catch { a = null }
   const h = a?.hours.find(x => x.hour === cur.hour)
   if (!h || h.level == null) return none
-  return { level: h.level, factors: pickFactors(h.f, rules), nextWindow: nextWindow(a.windows, cur.hour), rulesVersion: rules.version }
+  return { level: h.level, factors: pickFactors(h.f, rules), nextWindow: nextWindow(a.windows, cur.hour), date: cur.date, hour: cur.hour, rulesVersion: rules.version }
 }
