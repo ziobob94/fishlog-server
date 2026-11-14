@@ -1,4 +1,5 @@
 // Assistente vocale generico. Registrato sotto /api/assistant (v. index.js).
+// Mai dire «fatto» senza averlo fatto: ogni risultato `saved` esiste solo dopo il salvataggio andato a buon fine.
 //  POST /api/assistant   { text, time?, voiceId?, species?, force? }
 // Il modello traduce la frase in azioni (inizia uscita, registra cattura, cambia esca, fine uscita) che il server
 // esegue subito sull'uscita in corso dell'utente (o su quella appena avviata). Ogni azione si può annullare
@@ -8,6 +9,7 @@ import Session from '../models/Session.js'
 import { resolveSpecies, normalizeCatch, validTime, MAX_TEXT, MAX_CATCHES } from '../utils/voiceCatch.js'
 import { runAssistant } from '../utils/voiceAi.js'
 import { stateText } from '../utils/assistantTools.js'
+import { romeNow, resolveClock } from '../utils/clock.js'
 
 const TECHNIQUES = ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro']
 const WATERS = ['mare', 'fiume', 'lago', 'altro']
@@ -25,7 +27,8 @@ export default async function assistantRoutes(app) {
     if (text.length > MAX_TEXT) return reply.status(400).send({ error: `Testo troppo lungo (max ${MAX_TEXT} caratteri)` })
     const vid = typeof voiceId === 'string' && voiceId.length <= 64 ? voiceId : null
     const userId = req.user.sub
-    const clock = validTime(time) ? time : undefined
+    const rome = romeNow()
+    const clock = validTime(time) ? time : rome.time // ora locale del client; se manca, ora di Roma (mai UTC)
 
     // Invio già elaborato (es. ripetuto dalla coda offline dopo una risposta persa): nessuna nuova azione.
     if (vid) {
@@ -47,7 +50,8 @@ export default async function assistantRoutes(app) {
     }
     const { out } = ai
     if (!out.calls.length) {
-      return { results: [{ action: 'none', status: 'needs_info', reason: 'not_understood', question: out.reply || 'Non ho capito cosa vuoi fare. Puoi ripetere?' }], model: out.model }
+      // Nessuna azione eseguita: il testo libero del modello è solo una risposta, mai la conferma di un'azione.
+      return { results: [{ action: 'none', status: 'needs_info', reason: 'not_understood', question: out.reply || 'Non ho capito cosa vuoi fare. Puoi ripetere?', executed: false }], model: out.model }
     }
 
     const results = []
@@ -58,7 +62,7 @@ export default async function assistantRoutes(app) {
     // Una cattura (o un'esca, o la fine) senza uscita in corso: se ne avvia una e si dice chiaramente.
     const ensureSession = async () => {
       if (session) return session
-      session = new Session({ userId, status: 'ongoing', date: new Date(), startTime: clock, location: { name: 'Luogo da completare' }, ...(vid ? { voiceId: `${vid}:s` } : {}) })
+      session = new Session({ userId, status: 'ongoing', date: rome.date, startTime: clock, location: { name: 'Luogo da completare' }, ...(vid ? { voiceId: `${vid}:s` } : {}) })
       await session.save()
       results.push({ action: 'start_session', status: 'saved', auto: true, session: sessionSummary(session) })
       return session
@@ -74,7 +78,7 @@ export default async function assistantRoutes(app) {
         const luogo = clip(a.luogo, 120)
         if (!luogo) { results.push({ action: 'start_session', status: 'needs_info', reason: 'place_missing', question: 'Dove stai pescando?' }); continue }
         session = new Session({
-          userId, status: 'ongoing', date: new Date(), startTime: clock,
+          userId, status: 'ongoing', date: rome.date, startTime: clock,
           location: { name: luogo },
           ...(TECHNIQUES.includes(a.tecnica) ? { technique: a.tecnica } : {}),
           ...(WATERS.includes(a.acqua) ? { waterType: a.acqua } : {}),
@@ -98,7 +102,7 @@ export default async function assistantRoutes(app) {
           continue
         }
         await ensureSession()
-        const { fields, warnings, toComplete } = normalizeCatch(a, { defaultTime: clock })
+        const { fields, warnings, toComplete } = normalizeCatch({ ...a, ora: a.ora ? resolveClock(a.ora, { now: clock }) : undefined }, { defaultTime: clock })
         if (!fields.baitUsed && session.currentBait) fields.baitUsed = session.currentBait
         session.catches.push({ species: name, ...fields, ...(toComplete ? { toComplete: true } : {}), ...(vid ? { voiceId: `${vid}:${i}` } : {}) })
         docs.add(session)
@@ -111,9 +115,36 @@ export default async function assistantRoutes(app) {
         session.currentBait = esca
         docs.add(session)
         results.push({ action: 'change_bait', status: 'saved', bait: esca, previous, sessionId: session._id })
+      } else if (call.name === 'modifica_uscita') {
+        if (!session) { results.push({ action: 'update_session', status: 'info', reason: 'no_session', message: 'Non c\'è nessuna uscita in corso da modificare.' }); continue }
+        const changes = []
+        const before = { location: session.location?.toObject ? session.location.toObject() : { ...session.location }, startTime: session.startTime || '', endTime: session.endTime || '', technique: session.technique || '', waterType: session.waterType || '' }
+        const luogo = clip(a.luogo, 120)
+        if (luogo && luogo !== session.location?.name) { changes.push({ field: 'location', label: 'luogo', from: session.location?.name || '', to: luogo }); session.location.name = luogo }
+        const bad = []
+        for (const [key, fieldKey, fasciaKey, label] of [['ora_inizio', 'startTime', 'fascia_inizio', 'ora di inizio'], ['ora_fine', 'endTime', 'fascia_fine', 'ora di fine']]) {
+          if (a[key] == null || a[key] === '') continue
+          const v = resolveClock(a[key], { fascia: a[fasciaKey], now: clock })
+          if (!v) { bad.push(label); continue }
+          if (v !== (session[fieldKey] || '')) { changes.push({ field: fieldKey, label, from: session[fieldKey] || '', to: v }); session[fieldKey] = v }
+        }
+        if (TECHNIQUES.includes(a.tecnica) && a.tecnica !== session.technique) { changes.push({ field: 'technique', label: 'tecnica', from: session.technique || '', to: a.tecnica }); session.technique = a.tecnica }
+        if (WATERS.includes(a.acqua) && a.acqua !== session.waterType) { changes.push({ field: 'waterType', label: 'tipo di acqua', from: session.waterType || '', to: a.acqua }); session.waterType = a.acqua }
+        if (bad.length) results.push({ action: 'update_session', status: 'needs_info', reason: 'time_invalid', question: `Non ho capito l'${bad[0]}. Puoi ripeterla, per esempio «alle 4 e 30»?` })
+        if (!changes.length) {
+          if (!bad.length) results.push({ action: 'update_session', status: 'info', reason: 'unchanged', message: 'Questi dati erano già così: non ho cambiato nulla.', sessionId: session._id })
+          continue
+        }
+        docs.add(session)
+        const fields = Object.fromEntries(changes.map(c => [c.field, before[c.field]]))
+        results.push({
+          action: 'update_session', status: 'saved', sessionId: session._id, changes,
+          undo: { method: 'PATCH', url: `/sessions/${session._id}`, body: fields }, session: sessionSummary(session),
+          message: 'Ho aggiornato ' + changes.map(c => `${c.label}: ${c.to}`).join(', ') + '.'
+        })
       } else if (call.name === 'fine_uscita') {
         if (!session) { results.push({ action: 'end_session', status: 'info', reason: 'no_session', message: 'Non c\'è nessuna uscita in corso da chiudere.' }); continue }
-        const endTime = validTime(a.ora_fine) ? a.ora_fine : clock
+        const endTime = resolveClock(a.ora_fine, { fascia: a.fascia_fine, now: clock }) || clock
         session.status = 'closed'
         if (endTime) session.endTime = endTime
         docs.add(session)
@@ -121,7 +152,13 @@ export default async function assistantRoutes(app) {
         session = null // azioni successive nella stessa frase non toccano l'uscita chiusa
       }
     }
-    await Promise.all([...docs].map(d => d.save()))
+    try {
+      await Promise.all([...docs].map(d => d.save()))
+    } catch (err) {
+      // Il salvataggio è fallito: nessun risultato «saved» deve arrivare al client.
+      req.log.error({ err }, 'assistant: salvataggio fallito')
+      return reply.status(500).send({ error: 'Non sono riuscito a salvare la modifica. Riprova.', code: 'save_failed' })
+    }
     return { results, model: out.model, provider: ai.provider, escalated: !!out.escalated, ...(ai.degraded ? { degraded: ai.degraded } : {}) }
   })
 }
