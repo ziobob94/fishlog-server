@@ -21,5 +21,6 @@ jobs:
             cd /var/fishlog/fishlog-server
             git fetch origin master
             git reset --hard origin/master
+            rm -rf node_modules
             npm ci --omit=dev
             pm2 restart fishlog-server
