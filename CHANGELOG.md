@@ -1,3 +1,10 @@
+## [1.40.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.40.0...server-v1.40.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **deploy:** ripulisce node_modules prima di npm ci (ENOTEMPTY lasciava il server senza dipendenze) ([#37](https://github.com/ziobob94/fishlog-server/issues/37)) ([cc331fe](https://github.com/ziobob94/fishlog-server/commit/cc331fe0132a661af7da7ba70c9f395444dab7b8))
+
 # [1.40.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.39.0...server-v1.40.0) (2026-11-14)
 
 
