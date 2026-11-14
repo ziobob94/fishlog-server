@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.40.1...server-v1.41.0) (2026-11-14)
+
+
+### Features
+
+* **sessions:** catture a voce con Gemini gratuito (provider configurabile) ([#38](https://github.com/ziobob94/fishlog-server/issues/38)) ([7df32b4](https://github.com/ziobob94/fishlog-server/commit/7df32b4692590f732c0b962d004f748efbab6499))
+
 ## [1.40.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.40.0...server-v1.40.1) (2026-11-14)
 
 
