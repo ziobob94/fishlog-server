@@ -1,6 +1,6 @@
 {
   "name": "fishlog-server",
-  "version": "1.39.0",
+  "version": "1.40.0",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/**/*.test.js\"",

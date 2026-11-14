@@ -1,3 +1,11 @@
+# [1.40.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.39.0...server-v1.40.0) (2026-11-14)
+
+
+### Features
+
+* **me:** località preferite (GET/PUT /api/me/favorite-places) e meteo/mare in batch (POST /api/weather/batch) ([#36](https://github.com/ziobob94/fishlog-server/issues/36)) ([0c4e8d3](https://github.com/ziobob94/fishlog-server/commit/0c4e8d3c44aeb44c641d3b100ff81056b1ceead3))
+* **sessions:** catture a voce interpretate con Claude ([#35](https://github.com/ziobob94/fishlog-server/issues/35)) ([4dadfa5](https://github.com/ziobob94/fishlog-server/commit/4dadfa5b3f21f7307d9a680117427c7386b255bd))
+
 # [1.39.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.38.0...server-v1.39.0) (2026-11-13)
 
 
