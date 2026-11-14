@@ -2,14 +2,14 @@
 import AppConfig from '../config.js'
 import mongoose from 'mongoose'
 import Session from '../models/Session.js'
-import { activityForDay, loadRules, factorText, reliabilityOf, levelOf } from './fishingActivity.js'
+import { activityForDay, loadRules, factorText, reliabilityOf, levelOf, verdictOf } from './fishingActivity.js'
 import { likelySpecies } from './speciesLikelihood.js'
 
 const config = new AppConfig()
 export const rulesOverride = () => config.get('fishing.rules', null)
 const ACTIVITY_DAYS = 7
 
-function inputsFor(view, i) {
+export function inputsFor(view, i) {
   const d = view.daily[i]
   const marine = view.marine?.available ? view.marine : null
   return {
@@ -66,3 +66,40 @@ export function fishingForDay(view, date, userCounts = new Map()) {
   }
 }
 export { levelOf }
+
+const EFFECT = { favorevole: 'up', neutro: 'flat', sfavorevole: 'down' }
+const isNum = v => typeof v === 'number' && Number.isFinite(v)
+
+// I fattori più influenti dell'ora: peso × distanza dal valore neutro (a parità, vince il peso maggiore). Ogni fattore ha un effetto: up | flat | down.
+export function pickFactors(f, rules) {
+  const max = rules.home?.maxFactors ?? 3, neutral = rules.home?.neutral ?? 0.5
+  return Object.entries(f || {})
+    .filter(([, v]) => isNum(v))
+    .map(([key, v]) => ({ key, effect: EFFECT[verdictOf(v, rules)], w: rules.weights[key] ?? 0, infl: (rules.weights[key] ?? 0) * Math.abs(v - neutral) }))
+    .sort((a, b) => b.infl - a.infl || b.w - a.w)
+    .slice(0, max)
+    .map(({ key, effect }) => ({ key, effect }))
+}
+
+// Prima finestra favorevole di oggi non ancora finita. `now: true` se l'ora corrente ci sta dentro.
+export function nextWindow(windows, hour) {
+  for (const w of windows || []) {
+    const from = parseInt(w.from, 10), to = parseInt(w.to, 10) || 24
+    if (to > hour) return { from: w.from, to: w.to, now: from <= hour }
+  }
+  return null
+}
+
+// Riassunto «adesso» per la Home e le schede delle località: { level 1-5, factors, nextWindow, date, hour } (data e ora locali del luogo).
+// Senza dati sufficienti (meno di 2 fattori nell'ora) il livello è null: il client non inventa nulla. Lo storico delle uscite dell'utente non entra nel calcolo.
+export function fishingNow(view, rules = loadRules(rulesOverride())) {
+  const cur = view?.hourly?.[0]
+  const i = cur ? view.daily.findIndex(d => d.date === cur.date) : -1
+  const none = { level: null, factors: [], nextWindow: null, date: cur?.date ?? null, hour: cur?.hour ?? null, rulesVersion: rules.version }
+  if (i < 0) return none
+  let a = null
+  try { a = activityForDay({ ...inputsFor(view, i), withHourFactors: true }, rules) } catch { a = null }
+  const h = a?.hours.find(x => x.hour === cur.hour)
+  if (!h || h.level == null) return none
+  return { level: h.level, factors: pickFactors(h.f, rules), nextWindow: nextWindow(a.windows, cur.hour), date: cur.date, hour: cur.hour, rulesVersion: rules.version }
+}
