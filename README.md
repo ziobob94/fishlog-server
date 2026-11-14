@@ -24,6 +24,8 @@ npm run dev            # avvia con node --watch (riavvio automatico)
 
 La configurazione usa [`node-config`](https://www.npmjs.com/package/config), non `.env`: `config/default.json` contiene i default committati, `config/local.json` (gitignored) sovrascrive i segreti locali. Il server rifiuta l'avvio se `jwt.secret` non viene impostato in `local.json`.
 
+Dopo ogni modifica a `config/local.json` (es. una nuova chiave) il server va riavviato (`pm2 restart fishlog-server`) per rileggerla.
+
 | Chiave                  | Dove                  | Note                                    |
 |--------------------------|-----------------------|------------------------------------------|
 | `api.port` / `api.host`  | `default.json`        | Porta/host HTTP                          |
