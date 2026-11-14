@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.41.0...server-v1.42.0) (2026-11-14)
+
+
+### Features
+
+* **assistant:** Fishy, assistente vocale generico (inizia uscita, cattura, esca, fine uscita) ([#40](https://github.com/ziobob94/fishlog-server/issues/40)) ([8ec7898](https://github.com/ziobob94/fishlog-server/commit/8ec7898b6a4b53f279b943e02405bb585014d00f))
+
 # [1.41.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.40.1...server-v1.41.0) (2026-11-14)
 
 
