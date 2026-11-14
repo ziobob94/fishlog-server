@@ -64,6 +64,11 @@ const CatchSchema = new mongoose.Schema({
   time:     { type: String },
   notes:    { type: String },
 
+  // Inserimento a voce: `voiceId` rende idempotente l'invio (anche dalla coda
+  // offline), `toComplete` segnala una cattura registrata con dati mancanti.
+  voiceId:    { type: String },
+  toComplete: { type: Boolean },
+
   // Esca
   baitUsed:         { type: String },
   baitType:         { type: String, enum: ['naturale', 'artificiale', 'misto', ''] },
