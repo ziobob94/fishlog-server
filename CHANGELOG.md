@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.42.0...server-v1.43.0) (2026-11-14)
+
+
+### Features
+
+* **meteo:** attività dei pesci «adesso» per Home e località ([#41](https://github.com/ziobob94/fishlog-server/issues/41)) ([0b04b3e](https://github.com/ziobob94/fishlog-server/commit/0b04b3ec1f4ccaf5862296eeabad9b704c37ddd8))
+
 # [1.42.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.41.0...server-v1.42.0) (2026-11-14)
 
 
