@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.45.0...server-v1.46.0) (2026-11-15)
+
+
+### Features
+
+* **sessions:** link di condivisione pubblico e revocabile per le uscite ([#47](https://github.com/ziobob94/fishlog-server/issues/47)) ([02be507](https://github.com/ziobob94/fishlog-server/commit/02be5072421bb53f36e9de227e232d76d46e759c))
+
 # [1.45.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.44.0...server-v1.45.0) (2026-11-15)
 
 
