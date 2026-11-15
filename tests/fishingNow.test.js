@@ -9,7 +9,7 @@ const hourly = (over = {}) => Array.from({ length: 24 }, (_, hour) => ({ date: D
 // Vista minima del pannello meteo: l'ora corrente è la prima riga di `hourly`, come in getOverview.
 const view = (nowHour, extra = {}) => ({
   hourly: hourly().slice(nowHour), activityHours: hourly(), daily: [{ date: DATE, sunrise: `${DATE}T06:00`, sunset: `${DATE}T20:00` }],
-  marine: { available: false }, fishing: { moon: { illumination: 0 } }, ...extra,
+  marine: { available: true, waves: [], tides: { series: [] } }, fishing: { moon: { illumination: 0 } }, ...extra,
 })
 
 test('livello 1-5: alba con vento debole e pressione in calo → alto; mezzogiorno con vento forte → basso', () => {
@@ -49,6 +49,13 @@ test('dati mancanti: nessun livello inventato', () => {
   // vista vuota o senza ore
   assert.equal(fishingNow({ hourly: [], daily: [] }, rules).level, null)
   assert.equal(fishingNow(null, rules).level, null)
+})
+test('senza dati mare nessun livello, con motivo no-marine', () => {
+  const v = view(6, { marine: { available: false } })
+  const r = fishingNow(v, rules)
+  assert.deepEqual([r.level, r.factors, r.nextWindow, r.reason], [null, [], null, 'no-marine'])
+  assert.equal(fishingNow(view(6, { marine: undefined }), rules).reason, 'no-marine')
+  assert.equal(fishingNow(view(6), rules).reason, undefined)
 })
 test('prossima finestra: in corso, successiva o nessuna', () => {
   const w = [{ from: '05:00', to: '08:00' }, { from: '19:00', to: '21:00' }]
