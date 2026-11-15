@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.43.1...server-v1.44.0) (2026-11-15)
+
+
+### Features
+
+* **sessions:** data di fine opzionale (endDate) per uscite di più giorni ([#45](https://github.com/ziobob94/fishlog-server/issues/45)) ([6ab6977](https://github.com/ziobob94/fishlog-server/commit/6ab6977f7ab98f613689c5e45795a7fd5137e023))
+
 ## [1.43.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.43.0...server-v1.43.1) (2026-11-15)
 
 
