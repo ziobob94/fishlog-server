@@ -9,7 +9,7 @@ import { escapeRegExp } from '../utils/regex.js'
 
 // Dati del negozio visibili a tutti: P.IVA, telefono, documento e motivo del
 // rifiuto restano privati.
-const PUBLIC_SELLER_SELECT = 'displayName avatar shop.enabled shop.name shop.description shop.verificationStatus shop.verifiedAt shop.sellerType shop.website shop.city shop.delivery shop.contact shop.logo'
+const PUBLIC_SELLER_SELECT = 'displayName avatar shop.enabled shop.name shop.description shop.verificationStatus shop.verifiedAt shop.sellerType shop.website shop.city shop.delivery shop.contact shop.logo shop.address shop.phone shop.showPhone'
 
 // Tecnica di pesca più praticata → attrezzatura pertinente da cercare su
 // eBay quando l'utente non ha impostato una ricerca propria.
@@ -65,8 +65,16 @@ export default async function listingRoutes(app) {
     return (top && TECHNIQUE_QUERY[top._id]) || null
   }
 
+  // Il telefono del negozio è pubblico solo se il venditore ha attivato showPhone
+  function publicShop(shop) {
+    if (!shop) return shop
+    const { phone, ...rest } = shop
+    return { ...rest, showPhone: !!shop.showPhone, ...(shop.showPhone && phone ? { phone } : {}) }
+  }
+
   function withMediaUrls(baseUrl, listing) {
-    return { ...listing, media: (listing.media || []).map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) }
+    const seller = listing.seller?.shop ? { ...listing.seller, shop: publicShop(listing.seller.shop) } : listing.seller
+    return { ...listing, seller, media: (listing.media || []).map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` })) }
   }
 
   // GET /api/listings/categories — per popolare il filtro categoria lato client
@@ -215,7 +223,7 @@ export default async function listingRoutes(app) {
     const baseUrl = `${req.protocol}://${req.headers.host}`
     const viewerId = await optionalViewer(req)
     const listings = await Listing.find({ seller: user._id, status: 'active', $and: [await listingVisibilityFilter(viewerId)] }).sort({ createdAt: -1 }).lean()
-    return { shop: { _id: user._id, displayName: user.displayName, avatar: user.avatar, ...user.shop }, listings: listings.map(l => withMediaUrls(baseUrl, l)) }
+    return { shop: { _id: user._id, displayName: user.displayName, avatar: user.avatar, ...publicShop(user.shop) }, listings: listings.map(l => withMediaUrls(baseUrl, l)) }
   })
 
   // GET /api/listings/:id

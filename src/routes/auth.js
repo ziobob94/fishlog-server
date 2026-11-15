@@ -202,7 +202,7 @@ export default async function authRoutes(app) {
     const user = await User.findById(req.user.sub)
     if (!user) return reply.status(404).send({ error: 'Utente non trovato' })
 
-    const { enabled, name, description, sellerType, legalName, vatNumber, city, phone, website, delivery, contact } = req.body
+    const { enabled, name, description, sellerType, legalName, vatNumber, city, address, phone, showPhone, website, delivery, contact } = req.body
     const locked = user.shop.verificationStatus === 'verified'
     // Un venditore privato non ha vetrina né verifica: può pubblicare subito.
     // Passare a «privato» azzera una richiesta negozio in corso (non una già verificata).
@@ -230,7 +230,9 @@ export default async function authRoutes(app) {
       if (vatNumber !== undefined) user.shop.vatNumber = vatNumber
     }
     if (city !== undefined)    user.shop.city = city
+    if (address !== undefined) user.shop.address = address
     if (phone !== undefined)   user.shop.phone = phone
+    if (showPhone !== undefined) user.shop.showPhone = !!showPhone
     if (website !== undefined) user.shop.website = website
     if (contact !== undefined) user.shop.contact = contact
     if (Array.isArray(delivery)) user.shop.delivery = delivery.filter(d => ['ritiro', 'spedizione'].includes(d))
@@ -705,7 +707,9 @@ export default async function authRoutes(app) {
         legalName:          user.shop?.legalName || '',
         vatNumber:          user.shop?.vatNumber || '',
         city:               user.shop?.city || '',
+        address:            user.shop?.address || '',
         phone:              user.shop?.phone || '',
+        showPhone:          !!user.shop?.showPhone,
         website:            user.shop?.website || '',
         delivery:           user.shop?.delivery || [],
         contact:            user.shop?.contact || '',
