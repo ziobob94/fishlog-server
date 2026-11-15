@@ -256,8 +256,15 @@ export default async function sessionRoutes(app) {
         { $match: { ...match, startTime: { $regex: /^\d\d:\d\d$/ }, endTime: { $regex: /^\d\d:\d\d$/ } } },
         { $addFields: { s: toMin('$startTime'), e: toMin('$endTime') } },
         { $match: { s: { $ne: null }, e: { $ne: null } } },
-        // Oltre la mezzanotte: fine < inizio, si somma un giorno.
-        { $addFields: { minutes: { $cond: [{ $gte: ['$e', '$s'] }, { $subtract: ['$e', '$s'] }, { $add: [{ $subtract: ['$e', '$s'] }, 1440] }] } } },
+        // Giorni interi tra inizio e fine: con endDate sono quelli indicati, altrimenti 0 (stesso giorno)
+        // oppure 1 se la fine è prima dell'inizio (oltre la mezzanotte).
+        { $addFields: { days: { $cond: [
+          { $ne: [{ $type: '$endDate' }, 'date'] },
+          { $cond: [{ $gte: ['$e', '$s'] }, 0, 1] },
+          { $round: [{ $divide: [{ $subtract: ['$endDate', '$date'] }, 86400000] }, 0] }
+        ] } } },
+        { $addFields: { minutes: { $subtract: [{ $add: [{ $multiply: ['$days', 1440] }, '$e'] }, '$s'] } } },
+        { $match: { minutes: { $gte: 0 } } },
         { $group: { _id: '$userId', minutes: { $sum: '$minutes' }, sessionsCount: { $sum: 1 } } },
         { $addFields: { value: { $round: [{ $divide: ['$minutes', 60] }, 1] } } },
         { $sort: { minutes: -1, _id: 1 } },

@@ -92,6 +92,9 @@ const SessionSchema = new mongoose.Schema({
   title:     { type: String },
   date:      { type: Date, required: true, default: Date.now },
   startTime: { type: String },
+  // Giorno di fine: opzionale, solo per uscite che finiscono un altro giorno (carpfishing, più notti).
+  // Se manca, la fine è nello stesso giorno di `date` (o il giorno dopo se endTime < startTime).
+  endDate:   { type: Date },
   endTime:   { type: String },
   technique: { type: String, enum: ['surfcasting', 'feeder', 'spinning', 'bolentino', 'mosca', 'altro', ''] },
   waterType: { type: String, enum: ['mare', 'fiume', 'lago', 'altro', ''], default: '' },
