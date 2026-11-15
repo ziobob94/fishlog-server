@@ -41,6 +41,8 @@ const UserSchema = new mongoose.Schema({
     legalName:           { type: String, trim: true },
     vatNumber:           { type: String, trim: true },
     city:                { type: String, trim: true },
+    address:             { type: String, trim: true },
+    showPhone:           { type: Boolean, default: false },
     phone:               { type: String, trim: true },
     website:             { type: String, trim: true },
     delivery:            [{ type: String, enum: ['ritiro', 'spedizione'] }],
