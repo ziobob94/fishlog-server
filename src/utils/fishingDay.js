@@ -91,12 +91,14 @@ export function nextWindow(windows, hour) {
 }
 
 // Riassunto «adesso» per la Home e le schede delle località: { level 1-5, factors, nextWindow, date, hour } (data e ora locali del luogo).
-// Senza dati sufficienti (meno di 2 fattori nell'ora) il livello è null: il client non inventa nulla. Lo storico delle uscite dell'utente non entra nel calcolo.
+// Senza dati mare: level null e reason 'no-marine'. Senza dati sufficienti (meno di 2 fattori nell'ora) il livello è null: il client non inventa nulla. Lo storico delle uscite dell'utente non entra nel calcolo.
 export function fishingNow(view, rules = loadRules(rulesOverride())) {
   const cur = view?.hourly?.[0]
   const i = cur ? view.daily.findIndex(d => d.date === cur.date) : -1
   const none = { level: null, factors: [], nextWindow: null, date: cur?.date ?? null, hour: cur?.hour ?? null, rulesVersion: rules.version }
   if (i < 0) return none
+  // Senza dati mare (entroterra, laghi, fiumi o servizio marino non disponibile) la stima non si dà: `reason` lo dice al client, che nasconde la scheda.
+  if (!view.marine?.available) return { ...none, reason: 'no-marine' }
   let a = null
   try { a = activityForDay({ ...inputsFor(view, i), withHourFactors: true }, rules) } catch { a = null }
   const h = a?.hours.find(x => x.hour === cur.hour)
