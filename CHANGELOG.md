@@ -1,3 +1,10 @@
+# [1.45.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.44.0...server-v1.45.0) (2026-11-15)
+
+
+### Features
+
+* **shop:** salva indirizzo e showPhone del negozio, telefono pubblico solo se attivo ([#46](https://github.com/ziobob94/fishlog-server/issues/46)) ([d8b12dd](https://github.com/ziobob94/fishlog-server/commit/d8b12dda6f01cf38789adbeec9e2aef1e33b60db))
+
 # [1.44.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.43.1...server-v1.44.0) (2026-11-15)
 
 
