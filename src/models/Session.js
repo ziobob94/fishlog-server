@@ -125,6 +125,10 @@ const SessionSchema = new mongoose.Schema({
   allowedGroups: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Group' }],
   hidden:        { type: Boolean, default: false },
 
+  // Link di condivisione fuori dall'app: assente = uscita non condivisa. Lo crea
+  // e lo revoca solo l'autore (POST/DELETE /:id/share), mai implicito.
+  shareToken: { type: String },
+
   // Campi calcolati (aggiornati nel pre-save)
   totalCatches: { type: Number, default: 0 },
   bestCatch:    { type: String }
@@ -135,6 +139,7 @@ SessionSchema.index({ date: -1 })
 SessionSchema.index({ 'location.name': 1 })
 SessionSchema.index({ technique: 1 })
 SessionSchema.index({ userId: 1, date: -1 })
+SessionSchema.index({ shareToken: 1 }, { unique: true, sparse: true })
 SessionSchema.index({ visibility: 1, hidden: 1, 'location.country': 1, 'location.region': 1, 'location.province': 1, 'location.municipality': 1 })
 
 SessionSchema.pre('save', function (next) {

@@ -2,6 +2,7 @@ import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import mongoose from 'mongoose'
+import { nanoid } from 'nanoid'
 import Session from '../models/Session.js'
 import User from '../models/User.js'
 import { visibilityFilter, canEdit, canModerate } from '../utils/sessionAccess.js'
@@ -46,6 +47,8 @@ function periodStart(period, now = new Date()) {
   else if (period === 'year') { m = 0; d = 1 }
   return new Date(Date.UTC(y, m, d) - offset)
 }
+
+import { shareUrl } from '../utils/sessionShare.js'
 
 export default async function sessionRoutes(app) {
 
@@ -312,6 +315,8 @@ export default async function sessionRoutes(app) {
     const baseUrl = `${req.protocol}://${req.headers.host}`
     session.media = session.media?.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` }))
     session.record = await personalRecord(session)
+    // Il token è un segreto dell'autore: gli altri utenti non lo vedono.
+    if (String(session.userId) !== req.user.sub) delete session.shareToken
     return session
   })
 
@@ -324,7 +329,7 @@ export default async function sessionRoutes(app) {
       return reply.status(409).send({ error: 'Hai già un\'uscita in corso', ongoingId: existingOngoing._id })
     }
     // Come in PATCH: `hidden` è un campo di sola moderazione, non va accettato dal body dell'utente.
-    const { hidden, ...body } = req.body
+    const { hidden, shareToken, ...body } = req.body
     const session = new Session({ ...body, userId: req.user.sub, status: 'ongoing' })
     await session.save()
     return reply.status(201).send(session)
@@ -337,7 +342,7 @@ export default async function sessionRoutes(app) {
     if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
 
     // Impedisce di modificare campi riservati
-    const { userId, hidden, ...body } = req.body
+    const { userId, hidden, shareToken, ...body } = req.body
 
     // Anche riaprendo una sessione via PATCH non deve poterne coesistere
     // più di una "ongoing" per utente.
@@ -359,6 +364,31 @@ export default async function sessionRoutes(app) {
 
     await session.deleteOne()
     return { deleted: true, id: req.params.id }
+  })
+
+  // POST /api/sessions/:id/share — solo l'autore: crea (o restituisce) il link
+  // pubblico di sola lettura. Non cambia la visibilità dell'uscita nell'app.
+  app.post('/:id/share', auth, async (req, reply) => {
+    const session = await Session.findById(req.params.id)
+    if (!session) return reply.status(404).send({ error: 'Sessione non trovata' })
+    if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
+    if (!session.shareToken) {
+      session.shareToken = nanoid(12)
+      await session.save()
+    }
+    return { shareToken: session.shareToken, url: shareUrl(req, session.shareToken) }
+  })
+
+  // DELETE /api/sessions/:id/share — revoca: il vecchio link smette subito di funzionare.
+  app.delete('/:id/share', auth, async (req, reply) => {
+    const session = await Session.findById(req.params.id)
+    if (!session) return reply.status(404).send({ error: 'Sessione non trovata' })
+    if (!canEdit(req.user, session)) return reply.status(403).send({ error: 'Permesso negato' })
+    if (session.shareToken) {
+      session.shareToken = undefined
+      await session.save()
+    }
+    return { shareToken: null }
   })
 
   // PATCH /api/sessions/:id/hide — moderator/admin

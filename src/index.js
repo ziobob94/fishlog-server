@@ -38,6 +38,7 @@ import weatherRoutes     from './routes/weather.js'
 import meRoutes          from './routes/me.js'
 import fipsasRoutes      from './routes/fipsas.js'
 import fipsasPublicRoutes from './routes/fipsasPublic.js'
+import sessionPublicRoutes from './routes/sessionPublic.js'
 import fp from 'fastify-plugin'
 import { registerConnection } from './ws/hub.js'
 import { reloadRuntimeConfig, startPeriodicReload } from './runtimeConfigStore.js'
@@ -160,6 +161,7 @@ await app.register(weatherRoutes, { prefix: '/api/weather' })
 await app.register(meRoutes, { prefix: '/api/me' })
 await app.register(fipsasRoutes, { prefix: '/api/fipsas' })
 await app.register(fipsasPublicRoutes, { prefix: '/api/public/fipsas' })
+await app.register(sessionPublicRoutes, { prefix: '/api/public/sessions' })
 
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
