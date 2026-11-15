@@ -148,3 +148,51 @@ test('salvataggio fallito: errore 500 chiaro, nessun «saved»', async () => {
     assert.equal(r.status, 500); assert.equal(r.code, 'save_failed'); assert.equal(r.results, undefined)
   } finally { Session.prototype.save = realSave }
 })
+
+// ── Annunci a voce: Fishy prepara una bozza, non pubblica ─────────────────────
+const { default: User } = await import('../src/models/User.js')
+const { default: Listing } = await import('../src/models/Listing.js')
+let shop = null
+User.findById = () => ({ select: () => ({ lean: async () => ({ shop }) }) })
+const gemini = (args) => { process.env.GEMINI_API_KEY = 'K'; globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ candidates: [{ content: { parts: [{ functionCall: { name: 'crea_annuncio', args } }] } }] }) }) }
+const withFetch = async fn => { const f = globalThis.fetch; try { return await fn() } finally { globalThis.fetch = f; noKeys() } }
+const createSpy = () => { let n = 0; const orig = Listing.create; Listing.create = async () => { n++ }; return { count: () => n, restore: () => { Listing.create = orig } } }
+
+test('annuncio completo: bozza da confermare, nulla viene creato', async () => {
+  fresh(); shop = null; const spy = createSpy()
+  await withFetch(async () => {
+    gemini({ titolo: 'Canna da surf', categoria: 'canne', condizione: 'usato', prezzo: 80 })
+    const r = await call({ text: 'vendo una canna da surf usata a 80 euro' })
+    assert.equal(r.results[0].action, 'create_listing'); assert.equal(r.results[0].status, 'needs_confirmation'); assert.equal(r.results[0].executed, false)
+    assert.deepEqual(r.results[0].draft, { title: 'Canna da surf', category: 'canne', condition: 'usato', price: 80, currency: 'EUR', visibility: 'all' })
+    assert.ok(!r.results.some(x => x.status === 'saved')); assert.equal(spy.count(), 0); assert.equal(store.length, 0)
+  }); spy.restore()
+})
+test('annuncio senza prezzo né condizione: chiede, e la risposta completa la bozza', async () => {
+  fresh(); shop = null
+  await withFetch(async () => {
+    gemini({ titolo: 'Canna da surf', categoria: 'canne' })
+    const r = await call({ text: 'voglio vendere una canna da surf' })
+    const n = r.results[0]
+    assert.equal(n.status, 'needs_info'); assert.deepEqual(n.missing, ['price', 'condition']); assert.equal(n.draft.title, 'Canna da surf')
+    gemini({ prezzo: 50, condizione: 'usato' })
+    const r2 = await call({ text: '50 euro, usata', listingDraft: n.draft })
+    assert.equal(r2.results[0].status, 'needs_confirmation'); assert.equal(r2.results[0].draft.title, 'Canna da surf'); assert.equal(r2.results[0].draft.price, 50)
+  })
+})
+test('annuncio: prezzo assurdo o negativo scartato e richiesto; bozza dal client ripulita', async () => {
+  fresh(); shop = null
+  await withFetch(async () => {
+    gemini({ titolo: 'Canna', condizione: 'nuovo', prezzo: -5 })
+    const r = await call({ text: 'vendo canna nuova a meno cinque', listingDraft: { title: 'x'.repeat(500), price: 'molto', evil: 1 } })
+    assert.deepEqual(r.results[0].missing, ['price']); assert.equal(r.results[0].draft.evil, undefined)
+  })
+})
+test('negozio non verificato: nessuna bozza, messaggio chiaro', async () => {
+  fresh(); shop = { enabled: true, sellerType: 'negozio', verificationStatus: 'pending' }
+  await withFetch(async () => {
+    gemini({ titolo: 'Canna', condizione: 'nuovo', prezzo: 10 })
+    const r = await call({ text: 'vendo canna nuova a 10 euro' })
+    assert.equal(r.results[0].status, 'info'); assert.equal(r.results[0].reason, 'seller_not_verified')
+  }); shop = null
+})
