@@ -168,6 +168,8 @@ export default async function assistantRoutes(app) {
         const endTime = resolveClock(a.ora_fine, { fascia: a.fascia_fine, now: clock }) || clock
         session.status = 'closed'
         if (endTime) session.endTime = endTime
+        // Uscita aperta da giorni (carpfishing): la fine è oggi, non il giorno di inizio
+        if (session.date && new Date(session.date).toISOString().slice(0, 10) < rome.date) session.endDate = rome.date
         docs.add(session)
         results.push({ action: 'end_session', status: 'saved', sessionId: session._id, endTime: endTime || '', summary: sessionSummary(session) })
         session = null // azioni successive nella stessa frase non toccano l'uscita chiusa
