@@ -1,3 +1,10 @@
+## [1.43.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.43.0...server-v1.43.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* nessuna stima di attività dei pesci senza dati mare (reason no-marine) ([#44](https://github.com/ziobob94/fishlog-server/issues/44)) ([92eb78d](https://github.com/ziobob94/fishlog-server/commit/92eb78d4c0d4cbbfdf18baf7c71210d26f99b5ae))
+
 # [1.43.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.42.0...server-v1.43.0) (2026-11-14)
 
 
