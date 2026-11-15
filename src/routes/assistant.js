@@ -1,11 +1,16 @@
 // Assistente vocale generico. Registrato sotto /api/assistant (v. index.js).
 // Mai dire «fatto» senza averlo fatto: ogni risultato `saved` esiste solo dopo il salvataggio andato a buon fine.
-//  POST /api/assistant   { text, time?, voiceId?, species?, force? }
+//  POST /api/assistant   { text, time?, voiceId?, species?, force?, listingDraft? }
 // Il modello traduce la frase in azioni (inizia uscita, registra cattura, cambia esca, fine uscita) che il server
 // esegue subito sull'uscita in corso dell'utente (o su quella appena avviata). Ogni azione si può annullare
 // dal client: catture con DELETE /api/sessions/:id/catches/:catchId, uscita avviata con DELETE /api/sessions/:id,
 // esca e fine uscita con PATCH /api/sessions/:id.
+// Annunci (crea_annuncio): Fishy NON pubblica. Risponde `create_listing` con status `needs_confirmation` e una bozza,
+// oppure `needs_info` (+ bozza parziale da rimandare come `listingDraft`) se mancano titolo/prezzo/condizione. L'annuncio
+// esiste solo quando il client conferma con POST /api/listings (stesse regole del form: venditore verificato, ecc.).
 import Session from '../models/Session.js'
+import User from '../models/User.js'
+import { normalizeListing, cleanDraft, listingQuestion } from '../utils/voiceListing.js'
 import { resolveSpecies, normalizeCatch, validTime, MAX_TEXT, MAX_CATCHES } from '../utils/voiceCatch.js'
 import { runAssistant } from '../utils/voiceAi.js'
 import { stateText } from '../utils/assistantTools.js'
@@ -21,7 +26,7 @@ export default async function assistantRoutes(app) {
   const limit = { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }
 
   app.post('/', { ...auth, ...limit }, async (req, reply) => {
-    const { text: rawText, time, voiceId, species: forcedSpecies, force } = req.body || {}
+    const { text: rawText, time, voiceId, species: forcedSpecies, force, listingDraft } = req.body || {}
     const text = typeof rawText === 'string' ? rawText.trim() : ''
     if (!text) return reply.status(400).send({ error: 'Testo mancante' })
     if (text.length > MAX_TEXT) return reply.status(400).send({ error: `Testo troppo lungo (max ${MAX_TEXT} caratteri)` })
@@ -43,7 +48,7 @@ export default async function assistantRoutes(app) {
     }
 
     let session = await Session.findOne({ userId, status: 'ongoing' })
-    const ai = await runAssistant(text, { time: clock, state: stateText(session), log: req.log })
+    const ai = await runAssistant(text, { time: clock, state: stateText(session, cleanDraft(listingDraft)), log: req.log })
     if (ai.failure) {
       if (ai.failure.retryAfter) reply.header('retry-after', String(ai.failure.retryAfter))
       return reply.status(ai.failure.status).send({ error: ai.failure.error, code: ai.failure.code, ...(ai.failure.retryAfter ? { retryAfter: ai.failure.retryAfter } : {}) })
@@ -58,6 +63,7 @@ export default async function assistantRoutes(app) {
     const docs = new Set() // uscite modificate da salvare alla fine
     let catchIndex = 0
     let catches = 0
+    let listingDone = false
 
     // Una cattura (o un'esca, o la fine) senza uscita in corso: se ne avvia una e si dice chiaramente.
     const ensureSession = async () => {
@@ -142,6 +148,21 @@ export default async function assistantRoutes(app) {
           undo: { method: 'PATCH', url: `/sessions/${session._id}`, body: fields }, session: sessionSummary(session),
           message: 'Ho aggiornato ' + changes.map(c => `${c.label}: ${c.to}`).join(', ') + '.'
         })
+      } else if (call.name === 'crea_annuncio') {
+        if (listingDone) continue // una sola bozza per frase
+        listingDone = true
+        const { draft, missing } = normalizeListing(a, cleanDraft(listingDraft))
+        if (missing.length) {
+          results.push({ action: 'create_listing', status: 'needs_info', reason: 'listing_incomplete', missing, draft, question: listingQuestion(missing) })
+          continue
+        }
+        const user = await User.findById(userId).select('shop').lean()
+        const isShop = !!(user?.shop?.enabled && user.shop.sellerType !== 'privato')
+        if (isShop && user.shop.verificationStatus !== 'verified') {
+          results.push({ action: 'create_listing', status: 'info', reason: 'seller_not_verified', message: 'Per pubblicare come negozio devi prima essere verificato: non ho preparato l\'annuncio.' })
+          continue
+        }
+        results.push({ action: 'create_listing', status: 'needs_confirmation', draft: { ...draft, currency: 'EUR', visibility: 'all' }, executed: false })
       } else if (call.name === 'fine_uscita') {
         if (!session) { results.push({ action: 'end_session', status: 'info', reason: 'no_session', message: 'Non c\'è nessuna uscita in corso da chiudere.' }); continue }
         const endTime = resolveClock(a.ora_fine, { fascia: a.fascia_fine, now: clock }) || clock
