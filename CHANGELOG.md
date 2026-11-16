@@ -1,3 +1,10 @@
+## [1.46.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.46.0...server-v1.46.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **sessions:** aggiungi l'url ai media delle catture nelle risposte ([ad885bd](https://github.com/ziobob94/fishlog-server/commit/ad885bdad81be1b9bd17d2f7b1e7bb54193ba740))
+
 # [1.46.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.45.0...server-v1.46.0) (2026-11-15)
 
 
