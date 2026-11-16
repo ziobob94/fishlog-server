@@ -38,11 +38,16 @@ const pick = (...vs) => { for (const v of vs) if (v != null) return v; return nu
 // Le coordinate si arrotondano a una griglia di 0,05° (≈ 5 km): utenti vicini condividono la stessa cella
 // e la stessa risposta, e le chiamate a Google restano dentro la quota gratuita (10.000 al mese).
 // Le richieste identiche in corso si uniscono (una sola chiamata) e gli errori non restano in cache.
+// In Italia la cella è più fine (0,02° ≈ 2 km): vicino alla costa 5 km possono separare mare e terra e dare un meteo diverso da quello che si vede.
 const CELL = 0.05
-export const cellOf = (lat, lng) => ({
-  lat: Number((Math.round(lat / CELL) * CELL).toFixed(2)),
-  lng: Number((Math.round(lng / CELL) * CELL).toFixed(2)),
-})
+const CELL_IT = 0.02
+export const cellOf = (lat, lng) => {
+  const c = inItaly(lat, lng) ? CELL_IT : CELL
+  return {
+    lat: Number((Math.round(lat / c) * c).toFixed(2)),
+    lng: Number((Math.round(lng / c) * c).toFixed(2)),
+  }
+}
 const cache = new Map()
 async function cached(key, ttlMs, fn, opts = {}) {
   const hit = cache.get(key)
@@ -110,16 +115,18 @@ async function gGet(path, lat, lng, extra) {
   return getJson(gUrl(path, c.lat, c.lng, extra))
 }
 // TTL scelti per la quota: l'attuale cambia di più, i giorni quasi mai.
-export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 15 * 60e3, () => gGet('currentConditions:lookup', lat, lng), { staleWhenBlocked: true })
+export const gCurrent = (lat, lng) => cached(`gc:${ck(lat, lng)}`, 10 * 60e3, () => gGet('currentConditions:lookup', lat, lng), { staleWhenBlocked: true })
 export const gDays = (lat, lng) => cached(`gd:${ck(lat, lng)}`, 3 * 3600e3, () => gGet('forecast/days:lookup', lat, lng, '&days=10&pageSize=10'), { staleWhenBlocked: true })
 // forecast/hours accetta al massimo 24 ore per pagina (pageSize 1-24) e 240 ore in tutto: ogni pagina è una richiesta a quota.
-// Ne chiediamo 48 (2 pagine); le ore successive arrivano da Open-Meteo (gratis). Se la seconda pagina fallisce teniamo la prima.
+// Ne chiediamo 168 (7 pagine = 7 giorni, gli stessi che il pannello mostra); l'ora oltre arriva da Open-Meteo (gratis). Se una pagina successiva fallisce teniamo quelle già lette.
+// Le ore cambiano poco: cache di 2 ore (7 richieste ogni 2 ore per cella attiva) mentre «adesso» si aggiorna ogni 10 minuti.
+const G_HOURS_PAGES = 7
 async function gHoursPaged(lat, lng) {
   const all = []
   let token = ''
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < G_HOURS_PAGES; i++) {
     let j
-    try { j = await gGet('forecast/hours:lookup', lat, lng, `&hours=48&pageSize=24${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`) }
+    try { j = await gGet('forecast/hours:lookup', lat, lng, `&hours=168&pageSize=24${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`) }
     catch (e) { if (i === 0) throw e; break }
     all.push(...(j.forecastHours || []))
     token = j.nextPageToken
@@ -127,7 +134,7 @@ async function gHoursPaged(lat, lng) {
   }
   return { forecastHours: all }
 }
-export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 60 * 60e3, () => gHoursPaged(lat, lng), { staleWhenBlocked: true })
+export const gHours = (lat, lng) => cached(`gh:${ck(lat, lng)}`, 2 * 3600e3, () => gHoursPaged(lat, lng), { staleWhenBlocked: true })
 export const gHistory = (lat, lng) => cached(`ghi:${ck(lat, lng)}`, 60 * 60e3, () => gGet('history/hours:lookup', lat, lng, '&hours=6&pageSize=6'), { staleWhenBlocked: true })
 
 // ── Open-Meteo (ripiego e dati marini) ────────────────────────────────────────

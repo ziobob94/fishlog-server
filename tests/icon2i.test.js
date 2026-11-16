@@ -84,3 +84,30 @@ test('overview fuori Italia: ICON-2I non viene nemmeno richiesto', async () => {
   assert.ok(!urls.some(u => u.includes('italia_meteo_arpae_icon_2i')))
   assert.equal(v.sources.weather, 'open-meteo')
 })
+
+test('Google primario: «adesso» e prime ore da Google, ICON-2I dopo, ripiego se Google fallisce', async () => {
+  process.env.GOOGLE_WEATHER_KEY = 'k'
+  try {
+    const start = new Date(); start.setUTCMinutes(0, 0, 0)
+    const gHour = i => { const t = new Date(start.getTime() + (i + 1) * 3600e3); return { interval: { startTime: t.toISOString() }, displayDateTime: { year: t.getUTCFullYear(), month: t.getUTCMonth() + 1, day: t.getUTCDate(), hours: t.getUTCHours() }, temperature: { degrees: 30 }, weatherCondition: { type: 'RAIN' } } }
+    mockFetch(u => {
+      if (u.includes('marine-api')) return new Error('no marine')
+      if (u.includes('currentConditions')) return { temperature: { degrees: 30 }, weatherCondition: { type: 'RAIN' }, isDaytime: true }
+      if (u.includes('forecast/hours')) return { forecastHours: Array.from({ length: 24 }, (_, i) => gHour(i)) }
+      if (u.includes('forecast/days')) return { forecastDays: [] }
+      if (u.includes('models=italia_meteo_arpae_icon_2i')) return fakeOm({ hours: 24 * 3, tempFrom: 22 })
+      return fakeOm({ hours: 24 * 16, tempFrom: 10, days: 15 })
+    })
+    const v = await getOverview(45.46, 9.19)
+    assert.match(v.sources.weather, /^google\+icon-2i/)
+    assert.equal(v.current.temp, 30)
+    assert.equal(v.hourly[0].source, 'google')
+    assert.ok(v.hourly.some(h => h.source === 'icon-2i'))
+  } finally { delete process.env.GOOGLE_WEATHER_KEY }
+})
+
+test('cella: 0,02° in Italia, 0,05° fuori', async () => {
+  const { cellOf } = await import('../src/utils/weather.js')
+  assert.deepEqual(cellOf(45.4642, 9.19), { lat: 45.46, lng: 9.18 })
+  assert.deepEqual(cellOf(40.43, -3.71), { lat: 40.45, lng: -3.7 })
+})
