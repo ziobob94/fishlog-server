@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/ziobob94/fishlog-server/compare/server-v1.46.1...server-v1.47.0) (2026-11-16)
+
+
+### Features
+
+* **meteo:** Google come fonte di adesso e dei primi 7 giorni, griglia 0,02° in Italia ([704e97a](https://github.com/ziobob94/fishlog-server/commit/704e97a277cbfa8383e2519ca95e96c8dc4dc8e3))
+
 ## [1.46.1](https://github.com/ziobob94/fishlog-server/compare/server-v1.46.0...server-v1.46.1) (2026-11-16)
 
 
