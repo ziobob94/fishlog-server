@@ -1,5 +1,5 @@
 // Pannello meteo + mare per una posizione qualsiasi (GET /api/weather/overview).
-// In Italia la fonte principale è ICON-2I (via Open-Meteo, CC BY 4.0, ~2 km, 72 ore): poi Google per i giorni 4-10 e Open-Meteo oltre; fuori Italia o se ICON-2I non risponde, resta lo schema sotto.
+// «Adesso», le ore e i giorni dei primi 7 giorni vengono da Google (se risponde); in Italia ICON-2I (via Open-Meteo, CC BY 4.0, ~2 km, 72 ore) completa le ore successive e i campi mancanti, ed è la fonte principale se Google non risponde. Poi Open-Meteo.
 // Meteo: Google Weather (attuale, 48 ore, 10 giorni) esteso con Open-Meteo (gratis) fino a 7 giorni di ore e 15 giorni di previsioni;
 // ogni riga porta `source` ('google' | 'open-meteo'). Trend e storico della pressione vengono da Open-Meteo (pressione a livello del mare).
 // Mare: Open-Meteo Marine (gratuito). Fuori dalla copertura marina (lago, entroterra) i campi sono null e `marine.available` è false.
@@ -111,7 +111,7 @@ function fromGoogle(c, hours, days) {
     precipProbability: num(c.precipitation?.probability?.percent),
     precipMm: num(c.precipitation?.qpf?.quantity),
   } : null
-  const hourly = (hours?.forecastHours || []).slice(0, 48).map(h => ({
+  const hourly = (hours?.forecastHours || []).slice(0, 168).map(h => ({
     time: h.interval?.startTime ?? null,
     date: h.displayDateTime ? ymd(h.displayDateTime) : null,
     hour: h.displayDateTime?.hours ?? null,
@@ -266,23 +266,25 @@ const utcMs = (row, off) => (row.source === 'google' ? Date.parse(row.time) : Da
 export async function getOverview(reqLat, reqLng) {
   const { lat, lng } = cellOf(reqLat, reqLng) // griglia 0,05°: risposta condivisa tra utenti vicini
   const useG = !!googleKey()
-  // ICON-2I per l'Italia: se risponde copre da solo l'ora corrente e le prime 72 ore, quindi Google «attuale» e «ore» (a quota) non servono.
+  // Google è la fonte di «adesso» e delle prime 24 ore (è ciò che l'utente confronta); ICON-2I completa le ore successive e i campi mancanti, Open-Meteo il resto.
+  // Se Google non risponde (quota al blocco, errore) si ripiega su ICON-2I come prima.
   const iconRaw = icon2iEnabled() && inItaly(lat, lng) ? await settle(omIcon(lat, lng)) : null
   const icon = fromIcon(iconRaw)
   const [gc, gh, gd, marineRaw, omRaw] = await Promise.all([
-    useG && !icon ? settle(gCurrent(lat, lng)) : null, useG && !icon ? settle(gHours(lat, lng)) : null,
+    useG ? settle(gCurrent(lat, lng)) : null, useG ? settle(gHours(lat, lng)) : null,
     useG ? settle(gDays(lat, lng)) : null, settle(omMarine(lat, lng)), settle(omPanel(lat, lng)),
   ])
   const g = (gc || gh || gd) ? fromGoogle(gc, gh, gd) : null
   const om = fromOpenMeteo(omRaw)
   const off = icon?.utcOffset ?? om?.utcOffset ?? 0
   // Livelli in ordine di priorità; ognuno completa il precedente oltre ciò che copre.
-  const layers = [['icon-2i', icon], ['google', g], ['open-meteo', om]].filter(l => l[1])
+  const googleFirst = !!g?.cur
+  const layers = (googleFirst ? [['google', g], ['icon-2i', icon], ['open-meteo', om]] : [['icon-2i', icon], ['google', g], ['open-meteo', om]]).filter(l => l[1])
   let w = null, extended = false
   const parts = []
   for (const [name, data] of layers) {
     if (!w) { w = data; parts.push(name); continue }
-    const r = extendWith(w, data, off, !!icon && name === 'open-meteo')
+    const r = extendWith(w, data, off, (name === 'icon-2i' && googleFirst) || (name === 'open-meteo' && !!icon && !googleFirst))
     if (r.used) parts.push(name)
     if (name === 'open-meteo' && r.extended) extended = true
   }
