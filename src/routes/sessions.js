@@ -48,6 +48,7 @@ function periodStart(period, now = new Date()) {
   return new Date(Date.UTC(y, m, d) - offset)
 }
 
+import { withMediaUrls } from '../utils/mediaUrls.js'
 import { shareUrl } from '../utils/sessionShare.js'
 
 export default async function sessionRoutes(app) {
@@ -116,7 +117,7 @@ export default async function sessionRoutes(app) {
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
     const data = sessions.map(s => ({
-      ...s,
+      ...withMediaUrls(s, baseUrl),
       thumbnail: s.media?.[0] ? `${baseUrl}/uploads/${s.media[0].filename}` : null
     }))
 
@@ -313,7 +314,7 @@ export default async function sessionRoutes(app) {
     if (!session) return reply.status(404).send({ error: 'Sessione non trovata o non accessibile' })
 
     const baseUrl = `${req.protocol}://${req.headers.host}`
-    session.media = session.media?.map(m => ({ ...m, url: `${baseUrl}/uploads/${m.filename}` }))
+    withMediaUrls(session, baseUrl)
     session.record = await personalRecord(session)
     // Il token è un segreto dell'autore: gli altri utenti non lo vedono.
     if (String(session.userId) !== req.user.sub) delete session.shareToken
@@ -332,7 +333,7 @@ export default async function sessionRoutes(app) {
     const { hidden, shareToken, ...body } = req.body
     const session = new Session({ ...body, userId: req.user.sub, status: 'ongoing' })
     await session.save()
-    return reply.status(201).send(session)
+    return reply.status(201).send(withMediaUrls(session.toObject(), `${req.protocol}://${req.headers.host}`))
   })
 
   // PATCH /api/sessions/:id
@@ -353,7 +354,7 @@ export default async function sessionRoutes(app) {
 
     Object.assign(session, body)
     await session.save()
-    return session
+    return withMediaUrls(session.toObject(), `${req.protocol}://${req.headers.host}`)
   })
 
   // DELETE /api/sessions/:id

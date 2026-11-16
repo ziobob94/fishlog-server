@@ -17,6 +17,7 @@ const ALLOWED_MIME = {
   'image/png':      'photo',
   'image/webp':     'photo',
   'image/heic':     'photo',
+  'image/heif':     'photo',
   'video/mp4':      'video',
   'video/quicktime':'video',
   'video/x-msvideo':'video'
